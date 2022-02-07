@@ -10,7 +10,7 @@ __email__ = "agabourie47@gmail.com"
 ###################################
 
 
-def load_UFF():
+def load_uff():
     """
     Loads dictionary that stores relevant LJ from UFF.
 
@@ -78,12 +78,12 @@ class LJ(object):
         self.global_cutoff = None
         self.cut_scale = cut_scale
         if symbols:
-            self.add_UFF_params(symbols)
+            self.add_uff_params(symbols)
 
         if ignore_pairs:
             self.ignore_pairs(ignore_pairs)
 
-    def add_UFF_params(self, symbols, replace=False):
+    def add_uff_params(self, symbols, replace=False):
         """
         Adds UFF parameters to the LJ object. Will replace existing parameters
         if 'replace' is set to True. UFF parameters are loaded from the package.
@@ -93,20 +93,20 @@ class LJ(object):
                 A single symbol or a list of symbols to add to the initial LJ list.
 
             replace (bool):
-                Whether or not to replace existing symbols
+                Whether to replace existing symbols
         """
         if type(symbols) == str:
             symbols = [symbols]  # convert to list if one string
-        UFF = load_UFF()
+        uff = load_uff()
         for symbol in symbols:
             if not replace and symbol in self.ljdict:
-                print("Warning: {} is already in LJ list and".format(symbol) + \
-                      " will not be included.\nTo include, use " + \
+                print("Warning: {} is already in LJ list and".format(symbol) +
+                      " will not be included.\nTo include, use " +
                       "replace_UFF_params or toggle 'replace' boolean.\n")
             else:
-                self.ljdict[symbol] = UFF[symbol]
+                self.ljdict[symbol] = uff[symbol]
 
-    def replace_UFF_params(self, symbols, add=False):
+    def replace_uff_params(self, symbols, add=False):
         """
         Replaces current LJ parameters with UFF values. Will add new entries if
         'add' is set to True. UFF parameters are loaded from the package.
@@ -116,17 +116,17 @@ class LJ(object):
                 A single symbol or a list of symbols to add to the initial LJ list.
 
             add (bool):
-                Whether or not to replace existing symbols
+                Whether to replace existing symbols
         """
         if type(symbols) == str:
             symbols = [symbols]  # convert to list if one string
-        UFF = load_UFF()
+        uff = load_uff()
         for symbol in symbols:
             if symbol in self.ljdict or add:
-                self.ljdict[symbol] = UFF[symbol]
+                self.ljdict[symbol] = uff[symbol]
             else:
-                print("Warning: {} is not in LJ list and".format(symbol) + \
-                      " cannot be replaced.\nTo include, use " + \
+                print("Warning: {} is not in LJ list and".format(symbol) +
+                      " cannot be replaced.\nTo include, use " +
                       "add_UFF_params or toggle 'add' boolean.\n")
 
     def add_param(self, symbol, data, replace=True):
@@ -142,7 +142,7 @@ class LJ(object):
                 sigma LJ values.
 
             replace (bool):
-                Whether or not to replace the item.
+                Whether to replace the item.
         """
 
         # check params
@@ -214,7 +214,7 @@ class LJ(object):
 
     def acknowledge_pair(self, pair):
         """
-        Removes the pair from the ignore list and acknowledges it during the output.
+        Removes the pair from ignore list and acknowledges it during the output.
 
         Args:
             pair (set):
@@ -234,7 +234,7 @@ class LJ(object):
 
     def acknowledge_pairs(self, pairs):
         """
-        Removes pairs from the ignore list.
+        Removes pairs from ignore list.
 
         Args:
             pairs (list(set)):

@@ -8,7 +8,7 @@ __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-def __scale_gpumd_tc(vol, T):
+def __scale_gpumd_tc(vol, temperature):
     """
     Used to scale the thermal conductivity when converting GPUMD heat-flux correlations
     to thermal conductivity.
@@ -17,7 +17,7 @@ def __scale_gpumd_tc(vol, T):
         vol (float):
             Volume in angstroms^3
 
-        T (float):
+        temperature (float):
             Temperature in K
 
     Returns:
@@ -27,10 +27,10 @@ def __scale_gpumd_tc(vol, T):
     one = 1.602176634e-19 * 9.651599e7  # eV^3/amu -> Jm^2/s^2*eV
     two = 1. / 1.e15  # fs -> s
     three = 1.e30 / 8.617333262145e-5  # K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
-    return one * two * three / (T * T * vol)
+    return one * two * three / (temperature * temperature * vol)
 
 
-def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, T=300, vol=1, max_tau=None, directions='xyz',
+def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, vol=1, max_tau=None, directions='xyz',
                    outputfile='heatmode.npy', save=False, directory=None, return_data=True):
     """
     Calculate the Green-Kubo thermal conductivity from modal heat current data from 'load_heatmode'
@@ -51,7 +51,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, T=300, vol=1, max
         sample_interval (int):
             Number of time steps per sample of modal heat flux
 
-        T (float):
+        temperature (float):
             Temperature of system during data collection
 
         vol (float):
@@ -93,7 +93,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, T=300, vol=1, max
     Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
     """
     out_path = __get_path(directory, outputfile)
-    scale = __scale_gpumd_tc(vol, T)
+    scale = __scale_gpumd_tc(vol, temperature)
     # set the heat flux sampling time: rate * timestep * scaling
     srate = sample_interval * dt  # [fs]
 
@@ -110,7 +110,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, T=300, vol=1, max
     size = max_lag + 1
     data['tau'] = np.squeeze(np.linspace(0, max_lag * srate, max_lag + 1))  # [ns]
 
-    ### AUTOCORRELATION ###
+    # AUTOCORRELATION #
     directions = __get_direction(directions)
     cplx = np.complex128
     # Note: loops necessary due to memory constraints
@@ -185,7 +185,7 @@ def running_ave(kappa, time):
     return cumtrapz(kappa, time, initial=0)/time
 
 
-def hnemd_spectral_kappa(shc, Fe, T, V):
+def hnemd_spectral_kappa(shc, driving_force, temperature, volume):
     """
     Spectral thermal conductivity calculation from an SHC run
 
@@ -193,13 +193,13 @@ def hnemd_spectral_kappa(shc, Fe, T, V):
         shc (dict):
             The data from a single SHC run as output by thermo.gpumd.data.load_shc
 
-        Fe (float):
+        driving_force (float):
             HNEMD force in (1/A)
 
-        T (float):
+        temperature (float):
             HNEMD run temperature (K)
 
-        V (float):
+        volume (float):
             Volume (A^3) during HNEMD run
 
     Returns:
@@ -218,5 +218,5 @@ def hnemd_spectral_kappa(shc, Fe, T, V):
 
     # ev*A/ps/THz * 1/A^3 *1/K * A ==> W/m/K/THz
     convert = 1602.17662
-    shc['kwi'] = shc['jwi']*convert/(Fe*T*V)
-    shc['kwo'] = shc['jwo'] * convert / (Fe * T * V)
+    shc['kwi'] = shc['jwi'] * convert / (driving_force * temperature * volume)
+    shc['kwo'] = shc['jwo'] * convert / (driving_force * temperature * volume)

@@ -9,7 +9,7 @@ __email__ = "agabourie47@gmail.com"
 # Structure preprocessing
 #########################################
 
-def __get_group(split, pos, direction):
+def __get_group(split, position, direction):
     """
     Gets the group that an atom belongs to based on its position. Only works in
     one direction as it is used for NEMD.
@@ -30,11 +30,11 @@ def __get_group(split, pos, direction):
 
     """
     if direction == 'x':
-        d = pos[0]
+        d = position[0]
     elif direction == 'y':
-        d = pos[1]
+        d = position[1]
     else:
-        d = pos[2]
+        d = position[2]
     errmsg = 'Out of bounds error: {}'.format(d)
     for i, val in enumerate(split[:-1]):
         if i == 0 and d < val:

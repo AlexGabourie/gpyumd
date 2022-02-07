@@ -38,7 +38,7 @@ def __process_sample(nbins, i):
     return np.array(out).reshape((nbins,5))
 
 
-def tail(f, nlines, BLOCK_SIZE=32768):
+def tail(f, nlines, block_size=32768):
     """
     Reads the last nlines of a file.
 
@@ -49,7 +49,7 @@ def tail(f, nlines, BLOCK_SIZE=32768):
         nlines (int):
             Number of lines to be read from end of file
 
-        BLOCK_SIZE (int):
+        block_size (int):
             Size of block (in bytes) to be read per read operation.
             Performance depend on this parameter and file size.
 
@@ -66,10 +66,10 @@ def tail(f, nlines, BLOCK_SIZE=32768):
     This may also be useful if you want to only grab data from the
     final m number of runs of the simulation
     """
-    # BLOCK_SIZE is in bytes (must decode to string)
+    # block_size is in bytes (must decode to string)
     f.seek(0, 2)
     bytes_remaining = f.tell()
-    idx = -BLOCK_SIZE
+    idx = -block_size
     blocks = list()
     # Make no assumptions about line length
     lines_left = nlines
@@ -77,19 +77,19 @@ def tail(f, nlines, BLOCK_SIZE=32768):
     first = True
     num_lines = 0
 
-    # BLOCK_size is smaller than file
-    if BLOCK_SIZE <= bytes_remaining:
+    # block_size is smaller than file
+    if block_size <= bytes_remaining:
         while lines_left > 0 and not eof:
-            if bytes_remaining > BLOCK_SIZE:
+            if bytes_remaining > block_size:
                 f.seek(idx, 2)
-                blocks.append(f.read(BLOCK_SIZE))
+                blocks.append(f.read(block_size))
             else:  # if reached end of file
                 f.seek(0, 0)
                 blocks.append(f.read(bytes_remaining))
                 eof = True
 
-            idx -= BLOCK_SIZE
-            bytes_remaining -= BLOCK_SIZE
+            idx -= block_size
+            bytes_remaining -= block_size
             num_lines = blocks[-1].count(b'\n')
             if first:
                 lines_left -= num_lines - 1
@@ -106,7 +106,7 @@ def tail(f, nlines, BLOCK_SIZE=32768):
             skip = 1 + abs(lines_left)
             blocks[-1] = blocks[-1].split(b'\n', skip)[skip]
         text = b''.join(reversed(blocks)).strip()
-    else:  # BLOCK_SIZE is bigger than file
+    else:  # block_size is bigger than file
         f.seek(0, 0)
         block = f.read()
         num_lines = block.count(b'\n')
@@ -125,9 +125,9 @@ def __modal_analysis_read(nbins, nsamples, datapath,
     datalines = nbins * nsamples
     with open(datapath, 'rb') as f:
         if multiprocessing:
-            malines = tail(f, datalines, BLOCK_SIZE=block_size)
+            malines = tail(f, datalines, block_size=block_size)
         else:
-            malines = deque(tail(f, datalines, BLOCK_SIZE=block_size))
+            malines = deque(tail(f, datalines, block_size=block_size))
 
     if multiprocessing:  # TODO Improve memory efficiency of multiprocessing
         if not ncore:
@@ -258,9 +258,9 @@ def load_compute(quantities=None, directory=None, filename='compute.out'):
     Args:
         quantities (str or list(str)):
             Quantities to extract from compute.out Accepted quantities are:\n
-            ['T', 'U', 'F', 'W', 'jp', 'jk']. \n
+            ['temperature', 'U', 'F', 'W', 'jp', 'jk']. \n
             Other quantity will be ignored.\n
-            T=temperature, U=potential, F=force, W=virial, jp=heat current (potential), jk=heat current (kinetic)
+            temperature=temperature, U=potential, F=force, W=virial, jp=heat current (potential), jk=heat current (kinetic)
 
         directory (str):
             Directory to load compute file from
@@ -274,7 +274,7 @@ def load_compute(quantities=None, directory=None, filename='compute.out'):
     .. csv-table:: Output dictionary
        :stub-columns: 1
 
-       **key**,T,U,F,W,jp,jk,Ein,Eout
+       **key**,temperature,U,F,W,jp,jk,Ein,Eout
        **units**,K,eV,|c1|,eV,|c2|,|c2|,eV,eV
 
    .. |c1| replace:: eVA\ :sup:`-1`
@@ -287,7 +287,7 @@ def load_compute(quantities=None, directory=None, filename='compute.out'):
     data = pd.read_csv(compute_path, delim_whitespace=True, header=None)
 
     num_col = len(data.columns)
-    q_count = {'T': 1, 'U': 1, 'F': 3, 'W': 3, 'jp': 3, 'jk': 3}
+    q_count = {'temperature': 1, 'U': 1, 'F': 3, 'W': 3, 'jp': 3, 'jk': 3}
     out = dict()
 
     count = 0
@@ -295,7 +295,7 @@ def load_compute(quantities=None, directory=None, filename='compute.out'):
         count += q_count[value]
 
     m = int(num_col / count)
-    if 'T' in quantities:
+    if 'temperature' in quantities:
         m = int((num_col - 2) / count)
         out['Ein'] = np.array(data.iloc[:, -2])
         out['Eout'] = np.array(data.iloc[:, -1])
@@ -328,13 +328,13 @@ def load_thermo(directory=None, filename='thermo.out'):
     .. csv-table:: Output dictionary
        :stub-columns: 1
 
-       **key**,T,K,U,Px,Py,Pz,Lx,Ly,Lz,ax,ay,az,bx,by,bz,cx,cy,cz
+       **key**,temperature,K,U,Px,Py,Pz,Lx,Ly,Lz,ax,ay,az,bx,by,bz,cx,cy,cz
        **units**,K,eV,eV,GPa,GPa,GPa,A,A,A,A,A,A,A,A,A,A,A,A
 
     """
     thermo_path = __get_path(directory, filename)
     data = pd.read_csv(thermo_path, delim_whitespace=True, header=None)
-    labels = ['T', 'K', 'U', 'Px', 'Py', 'Pz']
+    labels = ['temperature', 'K', 'U', 'Px', 'Py', 'Pz']
     # Orthogonal
     if data.shape[1] == 9:
         labels += ['Lx', 'Ly', 'Lz']
@@ -566,12 +566,12 @@ def load_saved_heatmode(filename='heatmode.npy', directory=None):
     return np.load(path, allow_pickle=True).item()
 
 
-def load_sdc(Nc, directory=None, filename='sdc.out'):
+def load_sdc(nc, directory=None, filename='sdc.out'):
     """
     Loads data from sdc.out GPUMD output file.
 
     Args:
-        Nc (int or list(int)):
+        nc (int or list(int)):
             Number of time correlation points the VAC/SDC is computed for
 
         directory (str):
@@ -593,20 +593,20 @@ def load_sdc(Nc, directory=None, filename='sdc.out'):
     .. |sd1| replace:: A\ :sup:`2` ps\ :sup:`-2`
     .. |sd2| replace:: A\ :sup:`2` ps\ :sup:`-1`
     """
-    Nc = __check_list(Nc, varname='Nc', dtype=int)
+    nc = __check_list(nc, varname='nc', dtype=int)
     sdc_path = __get_path(directory, filename)
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
-    __check_range(Nc, data.shape[0])
+    __check_range(nc, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz', 'SDCx', 'SDCy', 'SDCz']
-    return __basic_reader(Nc, data, labels)
+    return __basic_reader(nc, data, labels)
 
 
-def load_vac(Nc, directory=None, filename='mvac.out'):
+def load_vac(nc, directory=None, filename='mvac.out'):
     """
     Loads data from mvac.out GPUMD output file.
 
     Args:
-        Nc (int or list(int)):
+        nc (int or list(int)):
             Number of time correlation points the VAC is computed for
 
         directory (str):
@@ -627,12 +627,12 @@ def load_vac(Nc, directory=None, filename='mvac.out'):
 
     .. |v1| replace:: A\ :sup:`2` ps\ :sup:`-2`
     """
-    Nc = __check_list(Nc, varname='Nc', dtype=int)
+    nc = __check_list(nc, varname='nc', dtype=int)
     sdc_path = __get_path(directory, filename)
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
-    __check_range(Nc, data.shape[0])
+    __check_range(nc, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz']
-    return __basic_reader(Nc, data, labels)
+    return __basic_reader(nc, data, labels)
 
 
 def load_dos(num_dos_points, directory=None, filename='dos.out'):
@@ -673,13 +673,13 @@ def load_dos(num_dos_points, directory=None, filename='dos.out'):
     return out
 
 
-def load_shc(Nc, num_omega, directory=None, filename='shc.out'):
+def load_shc(nc, num_omega, directory=None, filename='shc.out'):
     """
     Loads the data from shc.out GPUMD output file.
 
     Args:
-        Nc (int or list(int)):
-            Maximum number of correlation steps. If multiple shc runs, can provide a list of Nc.
+        nc (int or list(int)):
+            Maximum number of correlation steps. If multiple shc runs, can provide a list of nc.
 
         num_omega (int or list(int)):
             Number of frequency points. If multiple shc runs, can provide a list of num_omega.
@@ -703,21 +703,21 @@ def load_shc(Nc, num_omega, directory=None, filename='shc.out'):
     .. |sh2| replace:: A eV ps\ :sup:`-1` THz\ :sup:`-1`
     """
 
-    Nc = __check_list(Nc, varname='Nc', dtype=int)
+    nc = __check_list(nc, varname='nc', dtype=int)
     num_omega = __check_list(num_omega, varname='num_omega', dtype=int)
-    if not len(Nc) == len(num_omega):
-        raise ValueError('Nc and num_omega must be the same length.')
+    if not len(nc) == len(num_omega):
+        raise ValueError('nc and num_omega must be the same length.')
     shc_path = __get_path(directory, filename)
     data = pd.read_csv(shc_path, delim_whitespace=True, header=None)
-    __check_range(np.array(Nc) * 2 - 1 + np.array(num_omega), data.shape[0])
-    if not all([i>0 for i in Nc]) or not all([i>0 for i in num_omega]):
+    __check_range(np.array(nc) * 2 - 1 + np.array(num_omega), data.shape[0])
+    if not all([i>0 for i in nc]) or not all([i > 0 for i in num_omega]):
         raise ValueError('Only strictly positive numbers are allowed.')
     labels_corr = ['t', 'Ki', 'Ko']
     labels_omega = ['nu', 'jwi', 'jwo']
 
     out = dict()
     start = 0
-    for i, varlen in enumerate(zip(Nc, num_omega)):
+    for i, varlen in enumerate(zip(nc, num_omega)):
         run = dict()
         Nc_i = varlen[0] * 2 - 1
         num_omega_i = varlen[1]
@@ -767,12 +767,12 @@ def load_kappa(directory=None, filename='kappa.out'):
     return out
 
 
-def load_hac(Nc, output_interval, directory=None,filename='hac.out'):
+def load_hac(nc, output_interval, directory=None, filename='hac.out'):
     """
     Loads data from hac.out GPUMD output file.
 
     Args:
-        Nc (int or list(int)):
+        nc (int or list(int)):
             Number of correlation steps
 
         output_interval (int or list(int)):
@@ -797,12 +797,12 @@ def load_hac(Nc, output_interval, directory=None,filename='hac.out'):
     .. |h2| replace:: eV\ :sup:`3` amu\ :sup:`-1`
     """
 
-    Nc = __check_list(Nc, varname='Nc', dtype=int)
+    nc = __check_list(nc, varname='nc', dtype=int)
     output_interval = __check_list(output_interval, varname='output_interval', dtype=int)
-    if not len(Nc) == len(output_interval):
-        raise ValueError('Nc and output_interval must be the same length.')
+    if not len(nc) == len(output_interval):
+        raise ValueError('nc and output_interval must be the same length.')
 
-    npoints = [int(x / y) for x, y in zip(Nc, output_interval)]
+    npoints = [int(x / y) for x, y in zip(nc, output_interval)]
     hac_path = __get_path(directory, filename)
     data = pd.read_csv(hac_path, delim_whitespace=True, header=None)
     __check_range(npoints, data.shape[0])
