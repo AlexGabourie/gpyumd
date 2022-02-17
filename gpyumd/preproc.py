@@ -1,4 +1,4 @@
-from .common import __check_list, __check_range
+from gpyumd.common import __check_list, __check_range
 from numpy import prod
 
 __author__ = "Alexander Gabourie"

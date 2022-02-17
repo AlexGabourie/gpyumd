@@ -5,8 +5,7 @@ import copy
 import multiprocessing as mp
 from functools import partial
 from collections import deque
-from .common import __get_path, __get_direction, __check_list, __check_range
-
+from gpyumd.common import __get_path, __get_direction, __check_list, __check_range
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"

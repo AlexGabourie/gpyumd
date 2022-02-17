@@ -1,8 +1,7 @@
 import numpy as np
 from scipy.integrate import cumtrapz
-from .common import __get_direction, __get_path
-from thermo.math.correlate import corr
-from scipy import integrate
+from gpyumd.common import __get_direction, __get_path
+from gpyumd.math.correlate import corr
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -126,10 +125,10 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
         data['kmxo'] = np.zeros((nbins, size))
         for m in range(nbins):
             data['jmxijx'][m, :] = corr(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
-            data['kmxi'][m, :] = integrate.cumtrapz(data['jmxijx'][m, :], data['tau'], initial=0) * scale
+            data['kmxi'][m, :] = cumtrapz(data['jmxijx'][m, :], data['tau'], initial=0) * scale
 
             data['jmxojx'][m, :] = corr(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
-            data['kmxo'][m, :] = integrate.cumtrapz(data['jmxojx'][m, :], data['tau'], initial=0) * scale
+            data['kmxo'][m, :] = cumtrapz(data['jmxojx'][m, :], data['tau'], initial=0) * scale
         del jx
 
     if 'y' in directions:
@@ -143,10 +142,10 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
         data['kmyo'] = np.zeros((nbins, size))
         for m in range(nbins):
             data['jmyijy'][m, :] = corr(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
-            data['kmyi'][m, :] = integrate.cumtrapz(data['jmyijy'][m, :], data['tau'], initial=0) * scale
+            data['kmyi'][m, :] = cumtrapz(data['jmyijy'][m, :], data['tau'], initial=0) * scale
 
             data['jmyojy'][m, :] = corr(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
-            data['kmyo'][m, :] = integrate.cumtrapz(data['jmyojy'][m, :], data['tau'], initial=0) * scale
+            data['kmyo'][m, :] = cumtrapz(data['jmyojy'][m, :], data['tau'], initial=0) * scale
         del jy
 
     if 'z' in directions:
@@ -158,7 +157,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
         data['kmz'] = np.zeros((nbins, size))
         for m in range(nbins):
             data['jmzjz'][m, :] = corr(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
-            data['kmz'][m, :] = integrate.cumtrapz(data['jmzjz'][m, :], data['tau'], initial=0) * scale
+            data['kmz'][m, :] = cumtrapz(data['jmzjz'][m, :], data['tau'], initial=0) * scale
         del jz
 
     data['tau'] = data['tau'] / 1.e6
