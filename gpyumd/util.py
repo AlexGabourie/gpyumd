@@ -5,7 +5,7 @@ __author__ = "Alexander Gabourie"
 __email__ = "gabourie@stanford.edu"
 
 
-def __get_direction(directions):
+def get_direction(directions):
     """
     Creates a sorted list showing which directions the user asked for. Ex: 'xyz' -> ['x', 'y', 'z']
 
@@ -24,13 +24,13 @@ def __get_direction(directions):
     return sorted(list(set(directions)))
 
 
-def __get_path(directory, filename):
+def get_path(directory, filename):
     if not directory:
         return os.path.join(os.getcwd(), filename)
     return os.path.join(directory, filename)
 
 
-def __check_list(data, varname=None, dtype=None):
+def check_list(data, varname=None, dtype=None):
     """
     Checks if data is a list of dtype or turns a variable of dtype into a list
 
@@ -60,7 +60,7 @@ def __check_list(data, varname=None, dtype=None):
     raise ValueError('{} is not the correct type.'.format(str(varname)))
 
 
-def __check_range(npoints, maxpoints):
+def check_range(npoints, maxpoints):
     """
     Checks if requested points are valid
 

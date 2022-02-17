@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.integrate import cumtrapz
-from gpyumd.common import __get_direction, __get_path
+from gpyumd.util import get_direction, get_path
 from gpyumd.math.correlate import corr
 
 __author__ = "Alexander Gabourie"
@@ -91,7 +91,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
 
     Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
     """
-    out_path = __get_path(directory, outputfile)
+    out_path = get_path(directory, outputfile)
     scale = __scale_gpumd_tc(vol, temperature)
     # set the heat flux sampling time: rate * timestep * scaling
     srate = sample_interval * dt  # [fs]
@@ -110,7 +110,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
     data['tau'] = np.squeeze(np.linspace(0, max_lag * srate, max_lag + 1))  # [ns]
 
     # AUTOCORRELATION #
-    directions = __get_direction(directions)
+    directions = get_direction(directions)
     cplx = np.complex128
     # Note: loops necessary due to memory constraints
     #  (can easily max out cluster mem.)

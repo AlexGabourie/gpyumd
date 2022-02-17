@@ -1,4 +1,4 @@
-from gpyumd.common import __check_list, __check_range
+from gpyumd.util import check_list, check_range
 from numpy import prod
 
 __author__ = "Alexander Gabourie"
@@ -249,13 +249,13 @@ def repeat(atoms, rep):
             List of three positive integers or a single integer
 
     """
-    rep = __check_list(rep, varname='rep', dtype=int)
+    rep = check_list(rep, varname='rep', dtype=int)
     replen = len(rep)
     if replen == 1:
         rep = rep*3
     elif not replen == 3:
         raise ValueError("rep must be a sequence of 1 or 3 integers.")
-    __check_range(rep, 2**64)
+    check_range(rep, 2 ** 64)
     supercell = atoms.repeat(rep)
     sinfo = supercell.info
     ainfo = atoms.info

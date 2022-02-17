@@ -5,7 +5,7 @@ import copy
 import multiprocessing as mp
 from functools import partial
 from collections import deque
-from gpyumd.common import __get_path, __get_direction, __check_list, __check_range
+from gpyumd.util import get_path, get_direction, check_list, check_range
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -172,7 +172,7 @@ def __basic_reader(points, data, labels):
 
 
 def __basic_frame_loader(n, directory, filename):
-    path = __get_path(directory, filename)
+    path = get_path(directory, filename)
     data = pd.read_csv(path, delim_whitespace=True, header=None).to_numpy(dtype='float')
     if not (data.shape[0] / n).is_integer():
         raise ValueError("An integer number of frames cannot be created. Please check n.")
@@ -199,7 +199,7 @@ def load_omega2(directory=None, filename='omega2.out'):
         N_basis is the number of basis atoms defined in basis.in
 
     """
-    path = __get_path(directory, filename)
+    path = get_path(directory, filename)
     data = pd.read_csv(path, delim_whitespace=True, header=None).to_numpy(dtype='float')
     data = np.sqrt(data)/(2*np.pi)
     return data
@@ -282,7 +282,7 @@ def load_compute(quantities=None, directory=None, filename='compute.out'):
     # TODO Add input checking
     if not quantities:
         return None
-    compute_path = __get_path(directory, filename)
+    compute_path = get_path(directory, filename)
     data = pd.read_csv(compute_path, delim_whitespace=True, header=None)
 
     num_col = len(data.columns)
@@ -331,7 +331,7 @@ def load_thermo(directory=None, filename='thermo.out'):
        **units**,K,eV,eV,GPa,GPa,GPa,A,A,A,A,A,A,A,A,A,A,A,A
 
     """
-    thermo_path = __get_path(directory, filename)
+    thermo_path = get_path(directory, filename)
     data = pd.read_csv(thermo_path, delim_whitespace=True, header=None)
     labels = ['temperature', 'K', 'U', 'Px', 'Py', 'Pz']
     # Orthogonal
@@ -412,11 +412,11 @@ def load_heatmode(nbins, nsamples, directory=None,
 
     Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
     """
-    jm_path = __get_path(directory, inputfile)
-    out_path = __get_path(directory, outputfile)
+    jm_path = get_path(directory, inputfile)
+    out_path = get_path(directory, outputfile)
     data = __modal_analysis_read(nbins, nsamples, jm_path, ndiv, multiprocessing, ncore, block_size)
     out = dict()
-    directions = __get_direction(directions)
+    directions = get_direction(directions)
     if 'x' in directions:
         out['jmxi'] = data[:, :, 0]
         out['jmxo'] = data[:, :, 1]
@@ -501,11 +501,11 @@ def load_kappamode(nbins, nsamples, directory=None,
 
     Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
     """
-    km_path = __get_path(directory, inputfile)
-    out_path = __get_path(directory, outputfile)
+    km_path = get_path(directory, inputfile)
+    out_path = get_path(directory, outputfile)
     data = __modal_analysis_read(nbins, nsamples, km_path, ndiv, multiprocessing, ncore, block_size)
     out = dict()
-    directions = __get_direction(directions)
+    directions = get_direction(directions)
     if 'x' in directions:
         out['kmxi'] = data[:, :, 0]
         out['kmxo'] = data[:, :, 1]
@@ -541,7 +541,7 @@ def load_saved_kappamode(filename='kappamode.npy', directory=None):
         dict: Dictionary with all modal thermal conductivities previously requested
 
     """
-    path = __get_path(directory, filename)
+    path = get_path(directory, filename)
     return np.load(path, allow_pickle=True).item()
 
 
@@ -561,7 +561,7 @@ def load_saved_heatmode(filename='heatmode.npy', directory=None):
 
     """
 
-    path = __get_path(directory, filename)
+    path = get_path(directory, filename)
     return np.load(path, allow_pickle=True).item()
 
 
@@ -592,10 +592,10 @@ def load_sdc(nc, directory=None, filename='sdc.out'):
     .. |sd1| replace:: A\ :sup:`2` ps\ :sup:`-2`
     .. |sd2| replace:: A\ :sup:`2` ps\ :sup:`-1`
     """
-    nc = __check_list(nc, varname='nc', dtype=int)
-    sdc_path = __get_path(directory, filename)
+    nc = check_list(nc, varname='nc', dtype=int)
+    sdc_path = get_path(directory, filename)
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
-    __check_range(nc, data.shape[0])
+    check_range(nc, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz', 'SDCx', 'SDCy', 'SDCz']
     return __basic_reader(nc, data, labels)
 
@@ -626,10 +626,10 @@ def load_vac(nc, directory=None, filename='mvac.out'):
 
     .. |v1| replace:: A\ :sup:`2` ps\ :sup:`-2`
     """
-    nc = __check_list(nc, varname='nc', dtype=int)
-    sdc_path = __get_path(directory, filename)
+    nc = check_list(nc, varname='nc', dtype=int)
+    sdc_path = get_path(directory, filename)
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
-    __check_range(nc, data.shape[0])
+    check_range(nc, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz']
     return __basic_reader(nc, data, labels)
 
@@ -661,10 +661,10 @@ def load_dos(num_dos_points, directory=None, filename='dos.out'):
     .. |d1| replace:: THz\ :sup:`-1`
 
     """
-    num_dos_points = __check_list(num_dos_points, varname='num_dos_points', dtype=int)
-    dos_path = __get_path(directory, filename)
+    num_dos_points = check_list(num_dos_points, varname='num_dos_points', dtype=int)
+    dos_path = get_path(directory, filename)
     data = pd.read_csv(dos_path, delim_whitespace=True, header=None)
-    __check_range(num_dos_points, data.shape[0])
+    check_range(num_dos_points, data.shape[0])
     labels = ['nu', 'DOSx', 'DOSy', 'DOSz']
     out = __basic_reader(num_dos_points, data, labels)
     for key in out.keys():
@@ -702,13 +702,13 @@ def load_shc(nc, num_omega, directory=None, filename='shc.out'):
     .. |sh2| replace:: A eV ps\ :sup:`-1` THz\ :sup:`-1`
     """
 
-    nc = __check_list(nc, varname='nc', dtype=int)
-    num_omega = __check_list(num_omega, varname='num_omega', dtype=int)
+    nc = check_list(nc, varname='nc', dtype=int)
+    num_omega = check_list(num_omega, varname='num_omega', dtype=int)
     if not len(nc) == len(num_omega):
         raise ValueError('nc and num_omega must be the same length.')
-    shc_path = __get_path(directory, filename)
+    shc_path = get_path(directory, filename)
     data = pd.read_csv(shc_path, delim_whitespace=True, header=None)
-    __check_range(np.array(nc) * 2 - 1 + np.array(num_omega), data.shape[0])
+    check_range(np.array(nc) * 2 - 1 + np.array(num_omega), data.shape[0])
     if not all([i>0 for i in nc]) or not all([i > 0 for i in num_omega]):
         raise ValueError('Only strictly positive numbers are allowed.')
     labels_corr = ['t', 'Ki', 'Ko']
@@ -757,7 +757,7 @@ def load_kappa(directory=None, filename='kappa.out'):
 
     """
 
-    kappa_path = __get_path(directory, filename)
+    kappa_path = get_path(directory, filename)
     data = pd.read_csv(kappa_path, delim_whitespace=True, header=None)
     labels = ['kxi', 'kxo', 'kyi', 'kyo', 'kz']
     out = dict()
@@ -796,15 +796,15 @@ def load_hac(nc, output_interval, directory=None, filename='hac.out'):
     .. |h2| replace:: eV\ :sup:`3` amu\ :sup:`-1`
     """
 
-    nc = __check_list(nc, varname='nc', dtype=int)
-    output_interval = __check_list(output_interval, varname='output_interval', dtype=int)
+    nc = check_list(nc, varname='nc', dtype=int)
+    output_interval = check_list(output_interval, varname='output_interval', dtype=int)
     if not len(nc) == len(output_interval):
         raise ValueError('nc and output_interval must be the same length.')
 
     npoints = [int(x / y) for x, y in zip(nc, output_interval)]
-    hac_path = __get_path(directory, filename)
+    hac_path = get_path(directory, filename)
     data = pd.read_csv(hac_path, delim_whitespace=True, header=None)
-    __check_range(npoints, data.shape[0])
+    check_range(npoints, data.shape[0])
     labels = ['t', 'jxijx', 'jxojx', 'jyijy', 'jyojy', 'jzjz',
               'kxi', 'kxo', 'kyi', 'kyo', 'kz']
     start = 0
