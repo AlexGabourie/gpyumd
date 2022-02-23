@@ -5,6 +5,16 @@ __author__ = "Alexander Gabourie"
 __email__ = "gabourie@stanford.edu"
 
 
+def is_positive_float(val, varname):
+    try:
+        val = float(val)
+    except ValueError:
+        print(f"{varname} must be a float.")
+        raise
+    if val <= 0:
+        ValueError(f"{varname} must be greater than 0.")
+    return val
+
 def get_direction(directions):
     """
     Creates a sorted list showing which directions the user asked for. Ex: 'xyz' -> ['x', 'y', 'z']

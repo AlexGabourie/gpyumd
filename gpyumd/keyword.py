@@ -1,6 +1,8 @@
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
+from util import is_positive_float
+
 
 class Keyword:
 
@@ -23,16 +25,16 @@ class Keyword:
         # TODO add a universal "to string" command
         pass
 
-    @staticmethod
-    def _is_positive_float(val, varname):
-        try:
-            val = float(val)
-        except ValueError:
-            print(f"{varname} must be a float.")
-            raise
-        if val <= 0:
-            ValueError(f"{varname} must be greater than 0.")
-        return val
+    def set_required_args(self, required_args):
+        """
+
+        Args:
+            required_args (list): A list of arguments required for the keyword. Must be in correct order.
+
+        Returns:
+            None
+        """
+        self.required_args = required_args
 
 
 class Velocity(Keyword):
@@ -45,7 +47,7 @@ class Velocity(Keyword):
         """
         self.keyword = 'velocity'
         self.propagating = False
-        self.initial_temperature = super()._is_positive_float(initial_temperature, 'initial_temperature')
+        self.initial_temperature = is_positive_float(initial_temperature, 'initial_temperature')
         super().__init__(self.keyword, [self.initial_temperature], self.propagating)
 
     def __str__(self):
@@ -65,16 +67,40 @@ class TimeStep(Keyword):
         """
         self.keyword = 'time_step'
         self.propagating = True
-        self.dt_in_fs = super()._is_positive_float(dt_in_fs, 'dt_in_fs')
+        self.dt_in_fs = is_positive_float(dt_in_fs, 'dt_in_fs')
 
         optional = None
         if max_distance_per_step:
-            self.max_distance_per_step = super()._is_positive_float(max_distance_per_step, 'max_distance_per_step')
+            self.max_distance_per_step = is_positive_float(max_distance_per_step, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
         super().__init__(self.keyword, [self.dt_in_fs], self.propagating, optional_args=optional)
 
 
-# class Ensemble(Keyword):
-#
-# def __init__(self, ensemble_type, ):
+class Ensemble(Keyword):
+
+    def __init__(self, ensemble_method):
+        if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
+                                  'heat_nhc', 'heat_bdp', 'heat_lan']):
+            raise ValueError(f"{ensemble_method} is not an accepted ensemble method.")
+        self.keyword = 'enemble'
+        self.ensemble_method = ensemble_method
+        self.propagating = False
+        super().__init__(self.keyword, [self.ensemble_method], self.propagating)
+
+        # TODO add initializers for inner classes of ensembles
+        self.ensemble = None
+
+    def set_nvt_parameters(self, ini):
+
+    class NVT:
+
+        def __init__(self):
+            self.initial_temperature = None
+            self.final_temperature = None
+            self.coupling = None
+
+        def set_parameters(self, initial_temperature, final_temperature, coupling):
+            self.initial_temperature = is_positive_float(initial_temperature, 'initial_temperature')
+            self.final_temperature = is_positive_float(final_temperature, 'final_temperature')
+            self.coupling = is_positive_float(coupling, 'coupling')
