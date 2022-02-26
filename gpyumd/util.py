@@ -1,19 +1,42 @@
 import re
 import os
 
+
 __author__ = "Alexander Gabourie"
 __email__ = "gabourie@stanford.edu"
 
 
-def is_positive_float(val, varname):
+def relate2str(relate):
+    relate = f"{relate}"[-3:-1]
+    if relate == "lt":
+        return "less than"
+    elif relate == "le":
+        return "less than or equal to"
+    elif relate == "eq":
+        return "equal to"
+    elif relate == "ne":
+        return "not equal to"
+    elif relate == "ge":
+        return "greater than or equal to"
+    else:
+        return "greater than"
+
+
+def cond_assign(val, threshold, relate, varname):
+    val = is_number(val, varname)
+    if relate(val, threshold):
+        return val
+    raise ValueError(f"{varname} must be {relate2str(relate)} {threshold}")
+
+
+def is_number(val, varname):
     try:
         val = float(val)
     except ValueError:
-        print(f"{varname} must be a float.")
+        print(f"{varname} must be a number.")
         raise
-    if val <= 0:
-        ValueError(f"{varname} must be greater than 0.")
     return val
+
 
 def get_direction(directions):
     """

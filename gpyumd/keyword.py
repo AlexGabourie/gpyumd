@@ -1,7 +1,9 @@
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
-from util import is_positive_float
+import operator as op
+import numbers
+from util import cond_assign, is_number
 
 
 class Keyword:
@@ -47,7 +49,7 @@ class Velocity(Keyword):
         """
         self.keyword = 'velocity'
         self.propagating = False
-        self.initial_temperature = is_positive_float(initial_temperature, 'initial_temperature')
+        self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
         super().__init__(self.keyword, [self.initial_temperature], self.propagating)
 
     def __str__(self):
@@ -67,11 +69,11 @@ class TimeStep(Keyword):
         """
         self.keyword = 'time_step'
         self.propagating = True
-        self.dt_in_fs = is_positive_float(dt_in_fs, 'dt_in_fs')
+        self.dt_in_fs = cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
 
         optional = None
         if max_distance_per_step:
-            self.max_distance_per_step = is_positive_float(max_distance_per_step, 'max_distance_per_step')
+            self.max_distance_per_step = cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
         super().__init__(self.keyword, [self.dt_in_fs], self.propagating, optional_args=optional)
@@ -135,9 +137,9 @@ class Ensemble(Keyword):
             self.parameters_set = False
 
         def set_parameters(self, initial_temperature, final_temperature, thermostat_coupling):
-            self.initial_temperature = is_positive_float(initial_temperature, 'initial_temperature')
-            self.final_temperature = is_positive_float(final_temperature, 'final_temperature')
-            self.thermostat_coupling = is_positive_float(thermostat_coupling, 'thermostat_coupling')
+            self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+            self.final_temperature = cond_assign(final_temperature, 0, op.gt, 'final_temperature')
+            self.thermostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             self.parameters_set = True
 
     class NPT:
@@ -153,10 +155,10 @@ class Ensemble(Keyword):
 
         def set_parameters(self, initial_temperature, final_temperature, thermostat_coupling,
                            barostat_coupling, condition, pdict):
-            self.initial_temperature = is_positive_float(initial_temperature, 'initial_temperature')
-            self.final_temperature = is_positive_float(final_temperature, 'final_temperature')
-            self.thermostat_coupling = is_positive_float(thermostat_coupling, 'thermostat_coupling')
-            self.barostat_coupling = is_positive_float(barostat_coupling, 'barostat_coupling')
+            self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+            self.final_temperature = cond_assign(final_temperature, 0, op.gt, 'final_temperature')
+            self.thermostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+            self.barostat_coupling = cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
             self.condition = condition
 
             if self.condition == 'isotropic':
@@ -172,9 +174,11 @@ class Ensemble(Keyword):
             pdict_valid = all([param in pdict.keys() for param in params])
             if pdict_valid:
                 for key in params:
-                    pdict_valid = pdict_valid and (pdict[key] == is_positive_float(pdict[key], key))
+                    pdict_valid &= isinstance(pdict[key], numbers.Number)
+                    if 'C_' in key:  # elastic moduli terms
+                        pdict_valid &= (pdict[key] > 0)
                 if not pdict_valid:
-                    raise ValueError(f"All parameters in the pdict for the NPT ensemble must be positive floats.")
+                    raise ValueError(f"Pressures must be a number and elastic moduli must be positive numbers.")
 
             else:
                 raise ValueError(f"The NPT parameters passed in the pdict are not sufficient.")
