@@ -54,10 +54,9 @@ class Velocity(Keyword):
         Args:
             initial_temperature (float): Initial temperature of the system. [K]
         """
-        self.keyword = 'velocity'
-        self.propagating = False
+
         self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
-        super().__init__(self.keyword, [self.initial_temperature], self.propagating)
+        super().__init__('velocity', [self.initial_temperature], False)
 
     def __str__(self):
         out = f"- \'{self.keyword}\' keyword -\n"
@@ -78,8 +77,6 @@ class TimeStep(Keyword):
             dt_in_fs (float): The time step to use for integration [fs]
             max_distance_per_step (float): The maximum distance an atom can travel within one step [Angstroms]
         """
-        self.keyword = 'time_step'
-        self.propagating = True
         self.dt_in_fs = cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
 
         optional = None
@@ -87,7 +84,7 @@ class TimeStep(Keyword):
             self.max_distance_per_step = cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
-        super().__init__(self.keyword, [self.dt_in_fs], self.propagating, optional_args=optional)
+        super().__init__('time_step', [self.dt_in_fs], True, optional_args=optional)
 
 
 class Ensemble(Keyword):
@@ -100,10 +97,8 @@ class Ensemble(Keyword):
         if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
                                     'heat_nhc', 'heat_bdp', 'heat_lan']):
             raise ValueError(f"{ensemble_method} is not an accepted ensemble method.")
-        self.keyword = 'enemble'
         self.ensemble_method = ensemble_method
-        self.propagating = False
-        super().__init__(self.keyword, [self.ensemble_method], self.propagating)
+        super().__init__('ensemble', [self.ensemble_method], False)
 
         self.ensemble = None
         ensemble_type = self.ensemble_method.split('_')[0]
