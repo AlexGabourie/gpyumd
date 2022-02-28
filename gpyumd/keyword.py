@@ -3,7 +3,7 @@ __email__ = "agabourie47@gmail.com"
 
 import operator as op
 import numbers
-from util import cond_assign, is_number
+from util import cond_assign, cond_assign_int
 
 
 class Keyword:
@@ -22,6 +22,9 @@ class Keyword:
         self.keyword = keyword
         self.required_args = required_args
         self.optional_args = optional_args
+
+    # TODO add a way to attach xyz files, also add a way to check if keywords are still valid if changing xyz
+    # could be a "check_params" function in each class
 
     def get_command(self):
         # TODO add a universal "to string" command
@@ -80,6 +83,10 @@ class TimeStep(Keyword):
 
 
 class Ensemble(Keyword):
+    """
+    Manages the "ensemble" keyword.
+    See https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword for additional details.
+    """
 
     def __init__(self, ensemble_method):
         if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
@@ -90,7 +97,6 @@ class Ensemble(Keyword):
         self.propagating = False
         super().__init__(self.keyword, [self.ensemble_method], self.propagating)
 
-        # TODO add initializers for inner classes of ensembles
         self.ensemble = None
         ensemble_type = self.ensemble_method.split('_')[0]
         if ensemble_type == 'nvt':
@@ -111,8 +117,6 @@ class Ensemble(Keyword):
         'orthogonal' --> p_xx p_yy p_zz C_xx C_yy C_zz \n
         'triclinic' --> p_xx p_yy p_zz p_xy p_xz p_yz C_xx C_yy C_zz C_xy C_xz C_yz \n
 
-        See https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword for additional details.
-
         Args:
             initial_temperature (float): Initial temperature of run. [K]
             final_temperature (float): Final temperature of run. [K]
@@ -126,7 +130,12 @@ class Ensemble(Keyword):
             None
 
         """
-        pass
+        if not isinstance(self.ensemble_method, self.NPT):
+            raise Exception("Ensemble is not set for NPT.")
+        required_args = self.ensemble_method.set_parameters(initial_temperature, final_temperature, thermostat_coupling,
+                                                            barostat_coupling, condition, pdict)
+        for arg in required_args:
+            self.required_args.append(arg)
 
     class NVT:
 
@@ -159,13 +168,12 @@ class Ensemble(Keyword):
             self.final_temperature = cond_assign(final_temperature, 0, op.gt, 'final_temperature')
             self.thermostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             self.barostat_coupling = cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
-            self.condition = condition
 
-            if self.condition == 'isotropic':
+            if condition == 'isotropic':
                 params = ['p_hydro', 'C_hydro']
-            elif self.condition == 'orthogonal':
+            elif condition == 'orthogonal':
                 params = ['p_xx', 'p_yy', 'p_zz', 'C_xx', 'C_yy', 'C_zz']
-            elif self.condition == 'triclinic':
+            elif condition == 'triclinic':
                 params = ['p_xx', 'p_yy', 'p_zz', 'p_xy', 'p_xz', 'p_yz',
                           'C_xx', 'C_yy', 'C_zz', 'C_xy', 'C_xz', 'C_yz']
             else:
@@ -182,3 +190,11 @@ class Ensemble(Keyword):
 
             else:
                 raise ValueError(f"The NPT parameters passed in the pdict are not sufficient.")
+            self.pdict = pdict
+
+            self.parameters_set = True
+            required_args = [self.initial_temperature, self.final_temperature, self.thermostat_coupling]
+            for key in params:  # use params to guarantee order
+                required_args.append(self.pdict[key])
+            required_args.append(self.barostat_coupling)
+            return required_args
