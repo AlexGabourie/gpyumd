@@ -105,7 +105,22 @@ class Ensemble(Keyword):
             self.ensemble_method = Ensemble.NPT()
 
     def set_nvt_parameters(self, initial_temperature, final_temperature, thermostat_coupling):
-        pass
+        """
+        Sets the parameters of an NVT ensemble
+
+        Args:
+            initial_temperature (float): Initial temperature of run. [K]
+            final_temperature (float): Final temperature of run. [K]
+            thermostat_coupling (float): Coupling strength to the thermostat.
+
+        Returns:
+            None
+        """
+        if not isinstance(self.ensemble_method, self.NVT):
+            raise Exception("Ensemble is not set for NVT.")
+        required_args = self.ensemble_method.set_parameters(initial_temperature, final_temperature, thermostat_coupling)
+        for arg in required_args:
+            self.required_args.append(arg)
 
     def set_npt_parameters(self, initial_temperature, final_temperature, thermostat_coupling,
                            barostat_coupling, condition, pdict):
@@ -150,6 +165,7 @@ class Ensemble(Keyword):
             self.final_temperature = cond_assign(final_temperature, 0, op.gt, 'final_temperature')
             self.thermostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             self.parameters_set = True
+            return [self.initial_temperature, self.final_temperature, self.thermostat_coupling]
 
     class NPT:
 
