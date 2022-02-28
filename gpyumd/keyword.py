@@ -43,14 +43,13 @@ class Keyword:
 
 
 class Velocity(Keyword):
-    """
-    Initializes the velocities of atoms according to a given temperature.
-    See https://gpumd.zheyongfan.org/index.php/The_velocity_keyword for more details
-    """
 
     def __init__(self, initial_temperature):
         """
-        Set up the initial velocities with a given temperature
+        Initializes the velocities of atoms according to a given temperature.
+
+        See https://gpumd.zheyongfan.org/index.php/The_velocity_keyword for more details
+
         Args:
             initial_temperature (float): Initial temperature of the system. [K]
         """
@@ -65,14 +64,13 @@ class Velocity(Keyword):
 
 
 class TimeStep(Keyword):
-    """
-    Sets the time step for integration.
-    See https://gpumd.zheyongfan.org/index.php/The_time_step_keyword for more details
-    """
 
     def __init__(self, dt_in_fs, max_distance_per_step=None):
         """
         Sets the time step for integration.
+
+        See https://gpumd.zheyongfan.org/index.php/The_time_step_keyword for more details
+
         Args:
             dt_in_fs (float): The time step to use for integration [fs]
             max_distance_per_step (float): The maximum distance an atom can travel within one step [Angstroms]
@@ -88,12 +86,18 @@ class TimeStep(Keyword):
 
 
 class Ensemble(Keyword):
-    """
-    Manages the "ensemble" keyword.
-    See https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword for additional details.
-    """
 
     def __init__(self, ensemble_method):
+        """
+        Manages the "ensemble" keyword.
+
+        See https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword for additional details.
+
+        Args:
+            ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
+                                    'heat_nhc', 'heat_bdp', 'heat_lan'
+        """
+
         if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
                                     'heat_nhc', 'heat_bdp', 'heat_lan']):
             raise ValueError(f"{ensemble_method} is not an accepted ensemble method.")
@@ -262,3 +266,21 @@ class Ensemble(Keyword):
             self.parameters_set = True
             return [self.temperature, self.therostat_coupling, self.temperature_delta,
                     self.source_group_id, self.sink_group_id]
+
+
+class Neighbor(Keyword):
+
+    def __init__(self, skin_distance=1):
+        """
+        Tells the code that the neighbor list should be updated on a specific run.
+
+        See https://gpumd.zheyongfan.org/index.php/The_neighbor_keyword for more details.
+
+        Args:
+            skin_distance (float): Difference between the cutoff distance for the neighbor list construction and force
+                                   evaluation.
+        """
+        self.skin_distance = cond_assign(skin_distance, 0, op.gt, 'skin_distance')
+        super().__init__('neighbor', [self.skin_distance], False)
+
+
