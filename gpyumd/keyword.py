@@ -103,11 +103,11 @@ class Ensemble(Keyword):
         self.ensemble = None
         ensemble_type = self.ensemble_method.split('_')[0]
         if ensemble_type == 'nvt':
-            self.ensemble_method = Ensemble.NVT()
+            self.ensemble = Ensemble.NVT()
         elif ensemble_type == 'npt':
-            self.ensemble_method = Ensemble.NPT()
+            self.ensemble = Ensemble.NPT()
         else:
-            self.ensemble_method = Ensemble.Heat()
+            self.ensemble = Ensemble.Heat()
 
     def set_nvt_parameters(self, initial_temperature, final_temperature, thermostat_coupling):
         """
@@ -121,9 +121,9 @@ class Ensemble(Keyword):
         Returns:
             None
         """
-        if not isinstance(self.ensemble_method, self.NVT):
+        if not isinstance(self.ensemble, self.NVT):
             raise Exception("Ensemble is not set for NVT.")
-        required_args = self.ensemble_method.set_parameters(initial_temperature, final_temperature, thermostat_coupling)
+        required_args = self.ensemble.set_parameters(initial_temperature, final_temperature, thermostat_coupling)
         for arg in required_args:
             self.required_args.append(arg)
 
@@ -150,9 +150,9 @@ class Ensemble(Keyword):
             None
 
         """
-        if not isinstance(self.ensemble_method, self.NPT):
+        if not isinstance(self.ensemble, self.NPT):
             raise Exception("Ensemble is not set for NPT.")
-        required_args = self.ensemble_method.set_parameters(initial_temperature, final_temperature, thermostat_coupling,
+        required_args = self.ensemble.set_parameters(initial_temperature, final_temperature, thermostat_coupling,
                                                             barostat_coupling, condition, pdict)
         for arg in required_args:
             self.required_args.append(arg)
@@ -171,9 +171,9 @@ class Ensemble(Keyword):
         Returns:
             None
         """
-        if not isinstance(self.ensemble_method, self.Heat):
+        if not isinstance(self.ensemble, self.Heat):
             raise Exception("Ensemble is not set for Heat.")
-        required_args = self.ensemble_method.set_parameters(temperature, thermostat_coupling, temperature_delta,
+        required_args = self.ensemble.set_parameters(temperature, thermostat_coupling, temperature_delta,
                                                             source_group_id, sink_group_id)
         for arg in required_args:
             self.required_args.append(arg)
