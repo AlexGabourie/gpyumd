@@ -30,12 +30,29 @@ def cond_assign(val, threshold, relate, varname):
     raise ValueError(f"{varname} must be {relate2str(relate)} {threshold}")
 
 
+def cond_assign_int(val, threshold, relate, varname):
+    val = is_int(val, varname)
+    if relate(val, threshold):
+        return val
+    raise ValueError(f"{varname} must be {relate2str(relate)} {threshold}")
+
+
 def is_number(val, varname):
     try:
         if not isinstance(val, numbers.Number):
             val = float(val)
     except ValueError:
         print(f"{varname} must be a number.")
+        raise
+    return val
+
+
+def is_int(val, varname):
+    try:
+        if not isinstance(val, int):
+            val = int(val)
+    except ValueError:
+        print(f"{varname} must be an int.")
         raise
     return val
 
