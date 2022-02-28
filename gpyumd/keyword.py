@@ -301,3 +301,28 @@ class Fix(Keyword):
         super().__init__('fix', [self.group_id], False)
 
 
+class Deform(Keyword):
+
+    def __init__(self, strain_rate, deform_x=False, deform_y=False, deform_z=False):
+        """
+        Deforms the simulation box. Can be used for tensile tests.
+
+        https://gpumd.zheyongfan.org/index.php/The_deform_keyword
+
+        Args:
+            strain_rate (float): Speed of the increase of the box length. [Angstroms/step]
+            deform_x (bool): True to deform in direction, False to not.
+            deform_y (bool): True to deform in direction, False to not.
+            deform_z (bool): True to deform in direction, False to not.
+        """
+        if not (isinstance(deform_x, bool) and isinstance(deform_y, bool) and isinstance(deform_z, bool)):
+            raise ValueError("Deform parameters must be a boolean.")
+        if not (deform_x or deform_y or deform_z):
+            raise ValueError("One deform parameter must be True.")
+        self.deform_x = deform_x
+        self.deform_y = deform_y
+        self.deform_z = deform_z
+        self.strain_rate = cond_assign(strain_rate, 0, op.gt, 'strain_rate')
+        super().__init__('deform', [self.strain_rate, int(self.deform_x), int(self.deform_y), int(self.deform_z)],
+                         False)
+
