@@ -43,6 +43,10 @@ class Keyword:
 
 
 class Velocity(Keyword):
+    """
+    Initializes the velocities of atoms according to a given temperature.
+    See https://gpumd.zheyongfan.org/index.php/The_velocity_keyword for more details
+    """
 
     def __init__(self, initial_temperature):
         """
@@ -62,6 +66,10 @@ class Velocity(Keyword):
 
 
 class TimeStep(Keyword):
+    """
+    Sets the time step for integration.
+    See https://gpumd.zheyongfan.org/index.php/The_time_step_keyword for more details
+    """
 
     def __init__(self, dt_in_fs, max_distance_per_step=None):
         """
