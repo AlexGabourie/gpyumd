@@ -48,7 +48,7 @@ class Velocity(Keyword):
         """
         Initializes the velocities of atoms according to a given temperature.
 
-        See https://gpumd.zheyongfan.org/index.php/The_velocity_keyword for more details
+        https://gpumd.zheyongfan.org/index.php/The_velocity_keyword
 
         Args:
             initial_temperature (float): Initial temperature of the system. [K]
@@ -69,7 +69,7 @@ class TimeStep(Keyword):
         """
         Sets the time step for integration.
 
-        See https://gpumd.zheyongfan.org/index.php/The_time_step_keyword for more details
+        https://gpumd.zheyongfan.org/index.php/The_time_step_keyword
 
         Args:
             dt_in_fs (float): The time step to use for integration [fs]
@@ -91,7 +91,7 @@ class Ensemble(Keyword):
         """
         Manages the "ensemble" keyword.
 
-        See https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword for additional details.
+        https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
             ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
@@ -274,7 +274,7 @@ class Neighbor(Keyword):
         """
         Tells the code that the neighbor list should be updated on a specific run.
 
-        See https://gpumd.zheyongfan.org/index.php/The_neighbor_keyword for more details.
+        https://gpumd.zheyongfan.org/index.php/The_neighbor_keyword
 
         Args:
             skin_distance (float): Difference between the cutoff distance for the neighbor list construction and force
@@ -282,5 +282,22 @@ class Neighbor(Keyword):
         """
         self.skin_distance = cond_assign(skin_distance, 0, op.gt, 'skin_distance')
         super().__init__('neighbor', [self.skin_distance], False)
+
+
+class Fix(Keyword):
+
+    def __init__(self, group_id):
+        """
+        Fixes (freezes) a group of atoms
+
+        https://gpumd.zheyongfan.org/index.php/The_fix_keyword
+
+        Args:
+            group_id: The group id of the atoms to freeze.
+        """
+
+        # TODO ensure that group label is not too large
+        self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
+        super().__init__('fix', [self.group_id], False)
 
 
