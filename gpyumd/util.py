@@ -1,5 +1,6 @@
 import re
 import os
+import numbers
 
 
 __author__ = "Alexander Gabourie"
@@ -31,7 +32,8 @@ def cond_assign(val, threshold, relate, varname):
 
 def is_number(val, varname):
     try:
-        val = float(val)
+        if not isinstance(val, numbers.Number):
+            val = float(val)
     except ValueError:
         print(f"{varname} must be a number.")
         raise
