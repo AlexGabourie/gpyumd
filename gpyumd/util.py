@@ -69,7 +69,7 @@ def get_direction(directions):
         list(str): An ordered list that simplifies the user input for future processing
 
     """
-    if not (bool(re.match('^[xyz]+$',directions))
+    if not (bool(re.match('^[xyz]+$', directions))
             or len(directions) > 3
             or len(directions) == 0):
         raise ValueError('Invalid directions used.')

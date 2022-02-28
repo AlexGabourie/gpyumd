@@ -103,6 +103,8 @@ class Ensemble(Keyword):
             self.ensemble_method = Ensemble.NVT()
         elif ensemble_type == 'npt':
             self.ensemble_method = Ensemble.NPT()
+        else:
+            self.ensemble_method = Ensemble.Heat()
 
     def set_nvt_parameters(self, initial_temperature, final_temperature, thermostat_coupling):
         """
@@ -149,6 +151,27 @@ class Ensemble(Keyword):
             raise Exception("Ensemble is not set for NPT.")
         required_args = self.ensemble_method.set_parameters(initial_temperature, final_temperature, thermostat_coupling,
                                                             barostat_coupling, condition, pdict)
+        for arg in required_args:
+            self.required_args.append(arg)
+
+    def set_heat_parameters(self, temperature, thermostat_coupling, temperature_delta, source_group_id, sink_group_id):
+        """
+        Sets the parameters for a heating simulation.
+
+        Args:
+            temperature (float): Base temperature of the simulation. [K]
+            thermostat_coupling (float): Coupling strength to the thermostat.
+            temperature_delta (float): Temperature change from base temperature. [K] (Note: total delta is twice this.)
+            source_group_id: The group ID (in grouping method 0) to source heat. (Note: +temperature_delta)
+            sink_group_id: The group ID (in grouping method 0) to sink heat. (Note: -temperature_delta)
+
+        Returns:
+            None
+        """
+        if not isinstance(self.ensemble_method, self.Heat):
+            raise Exception("Ensemble is not set for Heat.")
+        required_args = self.ensemble_method.set_parameters(temperature, thermostat_coupling, temperature_delta,
+                                                            source_group_id, sink_group_id)
         for arg in required_args:
             self.required_args.append(arg)
 
@@ -214,3 +237,25 @@ class Ensemble(Keyword):
                 required_args.append(self.pdict[key])
             required_args.append(self.barostat_coupling)
             return required_args
+
+    class Heat:
+
+        def __init__(self):
+            self.temperature = None
+            self.therostat_coupling = None
+            self.temperature_delta = None
+            self.source_group_id = None
+            self.sink_group_id = None
+            self.parameters_set = False
+
+        def set_parameters(self, temperature, thermostat_coupling, temperature_delta, source_group_id, sink_group_id):
+            # TODO check grouping information with xyz if it exists (only give warning)
+            self.temperature = cond_assign(temperature, 0, op.gt, 'temperature')
+            self.therostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+            if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
+                raise ValueError(f"The magnitude of temperature_delta is too large.")
+            self.source_group_id = cond_assign_int(source_group_id, 0, op.ge, 'source_group_id')  # TODO max id
+            self.sink_group_id = cond_assign_int(sink_group_id, 0, op.ge, 'sink_group_id')
+            self.parameters_set = True
+            return [self.temperature, self.therostat_coupling, self.temperature_delta,
+                    self.source_group_id, self.sink_group_id]
