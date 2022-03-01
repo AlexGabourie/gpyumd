@@ -8,20 +8,22 @@ from util import cond_assign, cond_assign_int
 
 class Keyword:
 
-    def __init__(self, keyword, required_args, propagating, optional_args=None):
+    def __init__(self, keyword, propagating):
         """
 
         Args:
             keyword (str): The keyword for the run.in file
-            required_args (list): A list of arguments required for the keyword. Must be in correct order.
+
             propagating (bool): Used to determine if a keyword propogates betwen runs.
-            optional_args (dict or list): A dictionary of the optional arguments with optional label as the key. If a
-                list, optional arguments are added in order
+
         """
         self.propagating = propagating
         self.keyword = keyword
-        self.required_args = required_args
-        self.optional_args = optional_args
+
+        self.required_args = None
+        self.optional_args = None
+        self.grouping_method = None
+        self.group_id = None
 
     # TODO add a way to attach xyz files, also add a way to check if keywords are still valid if changing xyz
     # could be a "check_params" function in each class
@@ -30,16 +32,31 @@ class Keyword:
         # TODO add a universal "to string" command
         pass
 
-    def set_required_args(self, required_args):
+    def _set_args(self, required_args, optional_args=None):
         """
 
         Args:
             required_args (list): A list of arguments required for the keyword. Must be in correct order.
-
+            optional_args (dict or list): A dictionary of the optional arguments with optional label as the key. If a
+                list, optional arguments are added in order
         Returns:
             None
         """
+        # TODO have a reset or extension?
         self.required_args = required_args
+        self.optional_args = optional_args
+
+    def valid_group_options(self, grouping_method, group_id):
+        # Take care of grouping options
+        if not (bool(grouping_method) == bool(group_id)):
+            raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
+        elif grouping_method and group_id:
+            self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+            self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
+
+    @staticmethod
+    def _option_check(options):
+        return None if len(options) == 0 else options
 
 
 class Velocity(Keyword):
@@ -53,9 +70,9 @@ class Velocity(Keyword):
         Args:
             initial_temperature (float): Initial temperature of the system. [K]
         """
-
+        super().__init__('velocity', False)
         self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
-        super().__init__('velocity', [self.initial_temperature], False)
+        self._set_args([self.initial_temperature])
 
     def __str__(self):
         out = f"- \'{self.keyword}\' keyword -\n"
@@ -75,6 +92,7 @@ class TimeStep(Keyword):
             dt_in_fs (float): The time step to use for integration [fs]
             max_distance_per_step (float): The maximum distance an atom can travel within one step [Angstroms]
         """
+        super().__init__('time_step', True)
         self.dt_in_fs = cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
 
         optional = None
@@ -82,7 +100,7 @@ class TimeStep(Keyword):
             self.max_distance_per_step = cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
-        super().__init__('time_step', [self.dt_in_fs], True, optional_args=optional)
+        self._set_args([self.dt_in_fs], optional_args=optional)
 
 
 class Ensemble(Keyword):
@@ -97,12 +115,12 @@ class Ensemble(Keyword):
             ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
                                     'heat_nhc', 'heat_bdp', 'heat_lan'
         """
-
+        super().__init__('ensemble', False)
         if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
                                     'heat_nhc', 'heat_bdp', 'heat_lan']):
             raise ValueError(f"{ensemble_method} is not an accepted ensemble method.")
         self.ensemble_method = ensemble_method
-        super().__init__('ensemble', [self.ensemble_method], False)
+        self._set_args([self.ensemble_method])
 
         self.ensemble = None
         ensemble_type = self.ensemble_method.split('_')[0]
@@ -128,8 +146,7 @@ class Ensemble(Keyword):
         if not isinstance(self.ensemble, self.NVT):
             raise Exception("Ensemble is not set for NVT.")
         required_args = self.ensemble.set_parameters(initial_temperature, final_temperature, thermostat_coupling)
-        for arg in required_args:
-            self.required_args.append(arg)
+        self.required_args.extend(required_args)
 
     def set_npt_parameters(self, initial_temperature, final_temperature, thermostat_coupling,
                            barostat_coupling, condition, pdict):
@@ -157,9 +174,8 @@ class Ensemble(Keyword):
         if not isinstance(self.ensemble, self.NPT):
             raise Exception("Ensemble is not set for NPT.")
         required_args = self.ensemble.set_parameters(initial_temperature, final_temperature, thermostat_coupling,
-                                                            barostat_coupling, condition, pdict)
-        for arg in required_args:
-            self.required_args.append(arg)
+                                                     barostat_coupling, condition, pdict)
+        self.required_args.extend(required_args)
 
     def set_heat_parameters(self, temperature, thermostat_coupling, temperature_delta, source_group_id, sink_group_id):
         """
@@ -178,9 +194,8 @@ class Ensemble(Keyword):
         if not isinstance(self.ensemble, self.Heat):
             raise Exception("Ensemble is not set for Heat.")
         required_args = self.ensemble.set_parameters(temperature, thermostat_coupling, temperature_delta,
-                                                            source_group_id, sink_group_id)
-        for arg in required_args:
-            self.required_args.append(arg)
+                                                     source_group_id, sink_group_id)
+        self.required_args.extend(required_args)
 
     class NVT:
 
@@ -280,8 +295,9 @@ class Neighbor(Keyword):
             skin_distance (float): Difference between the cutoff distance for the neighbor list construction and force
                                    evaluation.
         """
+        super().__init__('neighbor', False)
         self.skin_distance = cond_assign(skin_distance, 0, op.gt, 'skin_distance')
-        super().__init__('neighbor', [self.skin_distance], False)
+        self._set_args([self.skin_distance])
 
 
 class Fix(Keyword):
@@ -297,8 +313,11 @@ class Fix(Keyword):
         """
 
         # TODO ensure that group label is not too large
+        # can this work such that the Keyword class can only check if variables are correct, but the output string
+        # is only from the child class?
+        super().__init__('fix', False)
         self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
-        super().__init__('fix', [self.group_id], False)
+        self._set_args([self.group_id])
 
 
 class Deform(Keyword):
@@ -315,6 +334,7 @@ class Deform(Keyword):
             deform_y (bool): True to deform in direction, False to not.
             deform_z (bool): True to deform in direction, False to not.
         """
+        super().__init__('deform', False)
         if not (isinstance(deform_x, bool) and isinstance(deform_y, bool) and isinstance(deform_z, bool)):
             raise ValueError("Deform parameters must be a boolean.")
         if not (deform_x or deform_y or deform_z):
@@ -323,8 +343,7 @@ class Deform(Keyword):
         self.deform_y = deform_y
         self.deform_z = deform_z
         self.strain_rate = cond_assign(strain_rate, 0, op.gt, 'strain_rate')
-        super().__init__('deform', [self.strain_rate, int(self.deform_x), int(self.deform_y), int(self.deform_z)],
-                         False)
+        self._set_args([self.strain_rate, int(self.deform_x), int(self.deform_y), int(self.deform_z)])
 
 
 class DumpThermo(Keyword):
@@ -338,8 +357,9 @@ class DumpThermo(Keyword):
         Args:
             interval (int): Number of time steps between each dump of the thermodynamic data.
         """
+        super().__init__('dump_thermo', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
-        super().__init__('dump_thermo', [self.interval], False)
+        self._set_args([self.interval])
 
 
 class DumpPosition(Keyword):
@@ -356,19 +376,13 @@ class DumpPosition(Keyword):
             group_id (int): The group ID of the atoms to dump the position of.
             precision (str): Only 'single' or 'double' is accepted. The '%g' format is used if nothing specified.
         """
+        super().__init__('dump_position', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
-        self.grouping_method = None
-        self.group_id = None
         self.precision = None
         # TODO check if grouping method is too large or if grouping method exists. Same for ID
         options = list()
 
-        # Take care of grouping options
-        if not (bool(grouping_method) == bool(group_id)):
-            raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
-        elif grouping_method and group_id:
-            self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
-            self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
+        if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
 
         if precision:
@@ -377,7 +391,7 @@ class DumpPosition(Keyword):
             self.precision = precision
             options.extend(['precision', self.precision])
 
-        super().__init__('dump_position', [self.interval], False, optional_args=options)
+        self._set_args([self.interval], optional_args=self._option_check(options))
 
 
 class DumpNetCDF(Keyword):
@@ -392,6 +406,7 @@ class DumpNetCDF(Keyword):
             interval (int): Number of time steps between each dump of the position data.
             precision (str): Only 'single' or 'double' is accepted. The default is 'double'.
         """
+        super().__init__('dump_netcdf', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         options = list()
         if precision:
@@ -400,7 +415,7 @@ class DumpNetCDF(Keyword):
             self.precision = precision
             options.extend(['precision', self.precision])
 
-        super().__init__('dump_netcdf', [self.interval], False, optional_args=options)
+        self._set_args([self.interval], optional_args=self._option_check(options))
 
 
 class DumpRestart(Keyword):
@@ -414,5 +429,7 @@ class DumpRestart(Keyword):
         Args:
             interval (int): Number of time steps between each dump of the restart data.
         """
+        super().__init__('dump_restart', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
-        super().__init__('dump_restart', [self.interval], False)
+        self._set_args([self.interval])
+        
