@@ -476,4 +476,26 @@ class DumpForce(Keyword):
         self._set_args([self.interval], optional_args=self._option_check(options))
 
 
+class DumpEXYZ(Keyword):
+
+    def __init__(self, interval, has_velocity=False, has_force=False):
+        """
+        Dumps data into dump.xyz in the extended XYZ format
+
+
+        Args:
+            interval (int): Number of time steps between each dump of the force data.
+            has_velocity (bool): True to dump velocity data, False to not dump velocity data.
+            has_force (bool): True to dump force data, False to not dump force data.
+        """
+        super().__init__('dump_exyz', False)
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        if not isinstance(has_velocity, bool):
+            raise ValueError("The 'has_velocity' parameter must be a boolean.")
+        if not isinstance(has_force, bool):
+            raise ValueError("The 'has_force' parameter must be a boolean.")
+        self.has_velocity = has_velocity
+        self.has_force = has_force
+        self._set_args([self.interval, int(self.has_velocity), int(self.has_force)])
+
 
