@@ -401,3 +401,18 @@ class DumpNetCDF(Keyword):
             options.extend(['precision', self.precision])
 
         super().__init__('dump_netcdf', [self.interval], False, optional_args=options)
+
+
+class DumpRestart(Keyword):
+
+    def __init__(self, interval):
+        """
+        Dump data to the restart file
+
+        https://gpumd.zheyongfan.org/index.php/The_dump_restart_keyword
+
+        Args:
+            interval (int): Number of time steps between each dump of the restart data.
+        """
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        super().__init__('dump_restart', [self.interval], False)
