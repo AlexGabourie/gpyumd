@@ -341,3 +341,41 @@ class DumpThermo(Keyword):
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         super().__init__('dump_thermo', [self.interval], False)
 
+
+class DumpPosition(Keyword):
+
+    def __init__(self, interval, grouping_method=None, group_id=None, precision=None):
+        """
+        Dump the atom positions (coordinates) to a text file named movie.xyz
+
+        https://gpumd.zheyongfan.org/index.php/The_dump_position_keyword
+
+        Args:
+            interval (int): Number of time steps to dump the position data.
+            grouping_method (int): The grouping method to use.
+            group_id (int): The group ID of the atoms to dump the position of.
+            precision (str): Only 'single' or 'double' is accepted. The '%g' format is used if nothing specified.
+        """
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.grouping_method = None
+        self.group_id = None
+        self.precision = None
+        # TODO check if grouping method is too large or if grouping method exists. Same for ID
+        options = list()
+
+        # Take care of grouping options
+        if not (bool(grouping_method) == bool(group_id)):
+            raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
+        elif grouping_method and group_id:
+            self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+            self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
+            options.extend(['group', self.grouping_method, self.group_id])
+
+        if precision:
+            if precision not in ['single', 'double']:
+                raise ValueError("The precision option must be either 'single' or 'double'.")
+            self.precision = precision
+            options.extend(['precision', self.precision])
+
+        super().__init__('dump_position', [self.interval], False, optional_args=options)
+        
