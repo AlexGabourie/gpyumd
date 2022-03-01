@@ -432,4 +432,25 @@ class DumpRestart(Keyword):
         super().__init__('dump_restart', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
-        
+
+
+class DumpVelocity(Keyword):
+
+    def __init__(self, interval, grouping_method=None, group_id=None):
+        """
+        Dump the atom velocities to velocity.out
+
+        https://gpumd.zheyongfan.org/index.php/The_dump_velocity_keyword
+
+        Args:
+            interval (int): Number of time steps between each dump of the velocity data.
+            grouping_method (int): The grouping method to use.
+            group_id (int): The group ID of the atoms to dump the velocity of.
+        """
+        super().__init__('dump_velocity', False)
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        options = list()
+        if self.valid_group_options(grouping_method, group_id):
+            options.extend(['group', self.grouping_method, self.group_id])
+        self._set_args([self.interval], optional_args=self._option_check(options))
+
