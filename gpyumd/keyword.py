@@ -3,7 +3,7 @@ __email__ = "agabourie47@gmail.com"
 
 import operator as op
 import numbers
-from util import cond_assign, cond_assign_int
+from util import cond_assign, cond_assign_int, assign_bool
 
 
 class Keyword:
@@ -490,12 +490,56 @@ class DumpEXYZ(Keyword):
         """
         super().__init__('dump_exyz', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
-        if not isinstance(has_velocity, bool):
-            raise ValueError("The 'has_velocity' parameter must be a boolean.")
-        if not isinstance(has_force, bool):
-            raise ValueError("The 'has_force' parameter must be a boolean.")
-        self.has_velocity = has_velocity
-        self.has_force = has_force
+        self.has_velocity = assign_bool(has_velocity, 'has_velocity')
+        self.has_force = assign_bool(has_force, 'has_force')
         self._set_args([self.interval, int(self.has_velocity), int(self.has_force)])
+
+
+class Compute(Keyword):
+
+    def __init__(self, sample_interval, output_interval, grouping_method,
+                 temperature=False, potential=False, force=False, virial=False, jp=False, jk=False):
+        """
+        Computes and outputs space- and time-averaged quantities to the compute.out file.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_keyword
+
+        Args:
+            sample_interval (int): Sample quantities this many time steps.
+            output_interval (int): Averaging over so many sampled data before giving one output.
+            grouping_method (int): The grouping method to use.
+            temperature (bool): True to output temperature, False otherwise.
+            potential (bool): True to output the potential energy, False otherwise.
+            force (bool): True to output the force vector, False otherwise.
+            virial (bool): True to output the diagonal part of the virial, False otherwise.
+            jp (bool): True to output potential part of the heat current vector, False otherwise.
+            jk (bool): True to output kinetic part of the heat current vector, False otherwise.
+        """
+        super().__init__('compute', False)
+        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        # TODO add grouping_method check
+        self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+        args = [self.grouping_method, self.sample_interval, self.output_interval]
+
+        self.temperature = assign_bool(temperature, 'temperature')
+        self.potential = assign_bool(potential, 'potential')
+        self.force = assign_bool(force, 'force')
+        self.virial = assign_bool(virial, 'virial')
+        self.jp = assign_bool(jp, 'jp')
+        self.jk = assign_bool(jk, 'jk')
+
+        args.append('temperature') if self.temperature else None
+        args.append('potential') if self.potential else None
+        args.append('force') if self.force else None
+        args.append('virial') if self.virial else None
+        args.append('jp') if self.jp else None
+        args.append('jk') if self.jk else None
+
+        self._set_args(args)
+
+
+
+
 
 

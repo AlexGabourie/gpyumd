@@ -7,6 +7,12 @@ __author__ = "Alexander Gabourie"
 __email__ = "gabourie@stanford.edu"
 
 
+def assign_bool(var, varname):
+    if isinstance(var, bool):
+        return var
+    raise ValueError(f"The '{varname}' parameter must be a boolean.")
+
+
 def relate2str(relate):
     relate = f"{relate}"[-3:-1]
     if relate == "lt":
