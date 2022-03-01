@@ -336,7 +336,7 @@ class DumpThermo(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_dump_thermo_keyword
 
         Args:
-            interval (int): Number of time steps to dump the data.
+            interval (int): Number of time steps between each dump of the thermodynamic data.
         """
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         super().__init__('dump_thermo', [self.interval], False)
@@ -351,7 +351,7 @@ class DumpPosition(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_dump_position_keyword
 
         Args:
-            interval (int): Number of time steps to dump the position data.
+            interval (int): Number of time steps between each dump of the position data.
             grouping_method (int): The grouping method to use.
             group_id (int): The group ID of the atoms to dump the position of.
             precision (str): Only 'single' or 'double' is accepted. The '%g' format is used if nothing specified.
@@ -378,4 +378,26 @@ class DumpPosition(Keyword):
             options.extend(['precision', self.precision])
 
         super().__init__('dump_position', [self.interval], False, optional_args=options)
-        
+
+
+class DumpNetCDF(Keyword):
+
+    def __init__(self, interval, precision='double'):
+        """
+        Dump the atom positions in the NetCDF format.
+
+        https://gpumd.zheyongfan.org/index.php/The_dump_netcdf_keyword
+
+        Args:
+            interval (int): Number of time steps between each dump of the position data.
+            precision (str): Only 'single' or 'double' is accepted. The default is 'double'.
+        """
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        options = list()
+        if precision:
+            if precision not in ['single', 'double']:
+                raise ValueError("The precision option must be either 'single' or 'double'.")
+            self.precision = precision
+            options.extend(['precision', self.precision])
+
+        super().__init__('dump_netcdf', [self.interval], False, optional_args=options)
