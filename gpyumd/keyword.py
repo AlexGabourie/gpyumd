@@ -326,3 +326,18 @@ class Deform(Keyword):
         super().__init__('deform', [self.strain_rate, int(self.deform_x), int(self.deform_y), int(self.deform_z)],
                          False)
 
+
+class DumpThermo(Keyword):
+
+    def __init__(self, interval):
+        """
+        Dumps global thermodynamic properties
+
+        https://gpumd.zheyongfan.org/index.php/The_dump_thermo_keyword
+
+        Args:
+            interval (int): Number of time steps to dump the data.
+        """
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        super().__init__('dump_thermo', [self.interval], False)
+
