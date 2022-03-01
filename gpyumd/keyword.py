@@ -454,3 +454,26 @@ class DumpVelocity(Keyword):
             options.extend(['group', self.grouping_method, self.group_id])
         self._set_args([self.interval], optional_args=self._option_check(options))
 
+
+class DumpForce(Keyword):
+
+    def __init__(self, interval, grouping_method=None, group_id=None):
+        """
+        Dump the atom forces to a text file named force.out
+
+        https://gpumd.zheyongfan.org/index.php/The_dump_force_keyword
+
+        Args:
+            interval (int): Number of time steps between each dump of the force data.
+            grouping_method (int): The grouping method to use.
+            group_id (int): The group ID of the atoms to dump the force of.
+        """
+        super().__init__('dump_force', False)
+        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        options = list()
+        if self.valid_group_options(grouping_method, group_id):
+            options.extend(['group', self.grouping_method, self.group_id])
+        self._set_args([self.interval], optional_args=self._option_check(options))
+
+
+
