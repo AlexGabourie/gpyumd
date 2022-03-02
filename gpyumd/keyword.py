@@ -727,4 +727,54 @@ class ComputeGKMA(Keyword):
         self._set_args([self.sample_interval, self.first_mode, self.last_mode, self.bin_option, self.size])
 
 
+class ComputeHNEMA(Keyword):
+
+    def __init__(self, sample_interval, output_interval, driving_force_x, driving_force_y, driving_force_z,
+                 first_mode, last_mode, bin_option, size):
+        """
+        Computes the modal thermal conductivity using the homogeneous nonequilibrium modal analysis (HNEMA) method.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_hnema_keyword
+
+        Args:
+            sample_interval (int): The sampling interval (in number of steps) used to compute the modal heat current.
+            output_interval (int): The interval to output the modal thermal conductivity. Each modal thermal
+                conductivity output is averaged over all samples per output interval.
+            driving_force_x (float): The x-component of the driving force. [Angstroms^-1]
+            driving_force_y (float): The y-component of the driving force. [Angstroms^-1]
+            driving_force_z (float): The z-component of the driving force. [Angstroms^-1]
+            first_mode (int): First mode in the eigenvector.in file to include in the calculation.
+            last_mode (int): Last mode in the eigenvector.in file to include in the calculation.
+            bin_option (str): Only 'bin_size' or 'f_bin_size' are accepted.
+            size (int or float): If bin_option == 'bin_size', this is an integer describing how many modes per bin. If
+                bin_option == 'f_bin_size', this describes bin size in THz.
+        """
+        super().__init__('compute_hnema', False)
+        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        if not (self.output_interval % self.sample_interval == 0):
+            raise ValueError("The sample_interval must divide the output_interval an integer number of times.")
+
+        self.driving_force_x = assign_number(driving_force_x, 'driving_force_x')
+        self.driving_force_y = assign_number(driving_force_y, 'driving_force_y')
+        self.driving_force_z = assign_number(driving_force_z, 'driving_force_z')
+
+        self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
+        # TODO check that last_mode < 3*num_atoms
+        self.last_mode = cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
+
+        if bin_option == 'bin_size':
+            self.bin_option = bin_option
+            self.size = cond_assign_int(size, 0, op.gt, 'size')
+        elif bin_option == 'f_bin_size':
+            self.bin_option = bin_option
+            self.size = cond_assign(size, 0, op.gt, 'size')
+        else:
+            raise ValueError("The bin_option parameter must be 'bin_size' or 'f_bin_size'.")
+
+        # TODO add hidden arguments?
+
+        self._set_args([self.sample_interval, self.output_interval,
+                        self.driving_force_x, self.driving_force_y, self.driving_force_z,
+                        self.first_mode, self.last_mode, self.bin_option, self.size])
 

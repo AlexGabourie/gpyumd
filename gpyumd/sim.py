@@ -41,6 +41,8 @@ class Run:
     # TODO make sure there is a grouping method if we want to use Fix keyword
     # TODO check nyquist frequency for a run (DOS)
     # TODO make sure that there is an NVT or NPT set for compute_hnemd (not langevin)
+    # TODO make run class be initialized with a number of timesteps
+    # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
 
 
 
