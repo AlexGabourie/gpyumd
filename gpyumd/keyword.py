@@ -379,9 +379,9 @@ class DumpPosition(Keyword):
         super().__init__('dump_position', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self.precision = None
+
         # TODO check if grouping method is too large or if grouping method exists. Same for ID
         options = list()
-
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
 
@@ -408,6 +408,7 @@ class DumpNetCDF(Keyword):
         """
         super().__init__('dump_netcdf', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+
         options = list()
         if precision:
             if precision not in ['single', 'double']:
@@ -449,6 +450,7 @@ class DumpVelocity(Keyword):
         """
         super().__init__('dump_velocity', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+
         options = list()
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
@@ -470,6 +472,7 @@ class DumpForce(Keyword):
         """
         super().__init__('dump_force', False)
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+
         options = list()
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
@@ -568,14 +571,50 @@ class ComputeSHC(Keyword):
         self.transport_direction = transport_direction
         self.num_omega = cond_assign_int(num_omega, 0, op.ge, 'num_omega')
         self.max_omega = cond_assign(max_omega, 0, op.gt, 'max_omega')
+
         options = list()
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
 
-        transport_dict = {'x':0, 'y':1, 'z':2}
+        transport_dict = {'x': 0, 'y': 1, 'z': 2}
 
         self._set_args([self.sample_interval, self.num_corr_steps, transport_dict[self.transport_direction],
                         self.num_omega, self.max_omega], optional_args=self._option_check(options))
 
 
+class ComputeDOS(Keyword):
+
+    def __init__(self, sample_interval, num_corr_steps, max_omega,
+                 num_dos_points=None, grouping_method=None, group_id=None):
+        """
+        Computes the phonon density of states (PDOS) using the mass-weighted velocity autocorrelation (VAC). The output
+        is normalized such that the integral of the PDOS over all frequencies equals 3N, where N is the number of atoms.
+        Output goes to dos.out and mvac.out files.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_dos_keyword
+
+        Args:
+            sample_interval (int): Sampling interval between two correlation steps.
+            num_corr_steps (int): Total number of correlation steps.
+            max_omega (float): Maximum angular frequency to consider.
+            num_dos_points (int): Number of frequency points to be used in calculation. Default: num_corr_steps
+            grouping_method (int): The grouping method to use.
+            group_id (int): The group ID of the atoms to calculate the spectral heat current of.
+        """
+        super().__init__('compute_dos', False)
+        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
+        self.max_omega = cond_assign(max_omega, 0, op.gt, 'max_omega')
+
+        options = list()
+        self.num_dos_points = self.num_corr_steps
+        if num_dos_points:
+            self.num_dos_points = cond_assign_int(num_dos_points, 0, op.gt, 'num_dos_points')
+            options.extend(['num_dos_points', self.num_dos_points])
+
+        if self.valid_group_options(grouping_method, group_id):
+            options.extend(['group', self.grouping_method, self.group_id])
+
+        self._set_args([self.sample_interval, self.num_corr_steps, self.max_omega],
+                       optional_args=self._option_check(options))
 
