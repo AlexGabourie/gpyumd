@@ -40,6 +40,7 @@ class Run:
     # TODO Make sure there is a grouping method if using Heat ensemble
     # TODO make sure there is a grouping method if we want to use Fix keyword
     # TODO check nyquist frequency for a run (DOS)
+    # TODO make sure that there is an NVT or NPT set for compute_hnemd (not langevin)
 
 
 

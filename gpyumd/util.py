@@ -30,7 +30,7 @@ def relate2str(relate):
 
 
 def cond_assign(val, threshold, relate, varname):
-    val = is_number(val, varname)
+    val = assign_number(val, varname)
     if relate(val, threshold):
         return val
     raise ValueError(f"{varname} must be {relate2str(relate)} {threshold}")
@@ -43,7 +43,7 @@ def cond_assign_int(val, threshold, relate, varname):
     raise ValueError(f"{varname} must be {relate2str(relate)} {threshold}")
 
 
-def is_number(val, varname):
+def assign_number(val, varname):
     try:
         if not isinstance(val, numbers.Number):
             val = float(val)

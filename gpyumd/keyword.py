@@ -3,7 +3,7 @@ __email__ = "agabourie47@gmail.com"
 
 import operator as op
 import numbers
-from util import cond_assign, cond_assign_int, assign_bool
+from util import cond_assign, cond_assign_int, assign_bool, assign_number
 
 
 class Keyword:
@@ -667,4 +667,25 @@ class ComputeHAC(Keyword):
         self._set_args([self.sample_interval, self.num_corr_steps, self.output_interval])
 
 
+class ComputeHNEMD(Keyword):
 
+    def __init__(self, output_interval, driving_force_x, driving_force_y, driving_force_z):
+        """
+        Calculates the thermal conductivity using the HNEMD method.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_hnemd_keyword
+
+        Args:
+            output_interval (int): The output interval of the thermal conductivity.
+            driving_force_x (float): The x-component of the driving force. [Angstroms^-1]
+            driving_force_y (float): The y-component of the driving force. [Angstroms^-1]
+            driving_force_z (float): The z-component of the driving force. [Angstroms^-1]
+        """
+        super().__init__('compute_hnemd', False)
+        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        self.driving_force_x = assign_number(driving_force_x, 'driving_force_x')
+        self.driving_force_y = assign_number(driving_force_y, 'driving_force_y')
+        self.driving_force_z = assign_number(driving_force_z, 'driving_force_z')
+
+        self._set_args([self.output_interval, self.driving_force_x, self.driving_force_y, self.driving_force_z])
+        
