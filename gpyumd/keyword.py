@@ -645,4 +645,26 @@ class ComputeSDC(Keyword):
         self._set_args([self.sample_interval, self.num_corr_steps], optional_args=self._option_check(options))
 
 
+class ComputeHAC(Keyword):
+
+    def __init__(self, sample_interval, num_corr_steps, output_interval):
+        """
+        Calculates the heat current autocorrelation (HAC) and running thermal conductivity (RTC) using the
+        Green-Kubo method. Outputs data to hac.out file.
+
+        https://gpumd.zheyongfan.org/index.php/Main_Page#Inputs_for_the_src.2Fgpumd_executable
+
+        Args:
+            sample_interval (int): Sampling interval between two correlation steps.
+            num_corr_steps (int): Total number of correlation steps.
+            output_interval (int): The output interval of the HAC and RTC data.
+        """
+        super().__init__('compute_hac', False)
+        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
+        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+
+        self._set_args([self.sample_interval, self.num_corr_steps, self.output_interval])
+
+
 
