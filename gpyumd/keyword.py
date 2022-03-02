@@ -539,7 +539,43 @@ class Compute(Keyword):
         self._set_args(args)
 
 
+class ComputeSHC(Keyword):
 
+    def __init__(self, sample_interval, num_corr_steps, transport_direction, num_omega, max_omega,
+                 grouping_method=None, group_id=None):
+        """
+        Computes the non-equilibrium virial-velocity correlation function K(t) and the spectral heat current in a given
+        direction for a group of atoms. Outputs data to the shc.out file.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_shc_keyword
+
+        Args:
+            sample_interval (int): Sampling interval between two correlation steps.
+            num_corr_steps (int): Total number of correlation steps.
+            transport_direction (str): Only 'x', 'y', 'z' directions accepted.
+            num_omega (int): Number of frequency points to consider.
+            max_omega (float): Maximum angular frequency to consider.
+            grouping_method (int): The grouping method to use.
+            group_id (int): The group ID of the atoms to calculate the spectral heat current of.
+        """
+        super().__init__('compute_shc', False)
+        sample_interval = cond_assign_int(sample_interval, 1, op.ge, 'sample_interval')
+        self.sample_interval = cond_assign_int(sample_interval, 10, op.le, 'sample_interval')
+        num_corr_steps = cond_assign_int(num_corr_steps, 100, op.ge, 'num_corr_steps')
+        self.num_corr_steps = cond_assign_int(num_corr_steps, 1000, op.le, 'num_corr_steps')
+        if not (transport_direction in ['x', 'y', 'z']):
+            raise ValueError("Only 'x', 'y', and 'z' are accepted for the 'transport_direction' parameter.")
+        self.transport_direction = transport_direction
+        self.num_omega = cond_assign_int(num_omega, 0, op.ge, 'num_omega')
+        self.max_omega = cond_assign(max_omega, 0, op.gt, 'max_omega')
+        options = list()
+        if self.valid_group_options(grouping_method, group_id):
+            options.extend(['group', self.grouping_method, self.group_id])
+
+        transport_dict = {'x':0, 'y':1, 'z':2}
+
+        self._set_args([self.sample_interval, self.num_corr_steps, transport_dict[self.transport_direction],
+                        self.num_omega, self.max_omega], optional_args=self._option_check(options))
 
 
 
