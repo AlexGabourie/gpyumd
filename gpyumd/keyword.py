@@ -618,3 +618,31 @@ class ComputeDOS(Keyword):
         self._set_args([self.sample_interval, self.num_corr_steps, self.max_omega],
                        optional_args=self._option_check(options))
 
+
+class ComputeSDC(Keyword):
+
+    def __init__(self, sample_interval, num_corr_steps, grouping_method=None, group_id=None):
+        """
+        Computes the self diffusion coefficient (SDC) using the velocity autocorrelation (VAC).
+        Outputs data to the sdc.out file
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_sdc_keyword
+
+        Args:
+            sample_interval (int): Sampling interval between two correlation steps.
+            num_corr_steps (int): Total number of correlation steps.
+            grouping_method (int): The grouping method to use.
+            group_id (int): The group ID of the atoms to calculate the spectral heat current of.
+        """
+        super().__init__('compute_sdc', False)
+        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
+
+        options = list()
+        if self.valid_group_options(grouping_method, group_id):
+            options.extend(['group', self.grouping_method, self.group_id])
+
+        self._set_args([self.sample_interval, self.num_corr_steps], optional_args=self._option_check(options))
+
+
+
