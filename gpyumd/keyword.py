@@ -688,4 +688,43 @@ class ComputeHNEMD(Keyword):
         self.driving_force_z = assign_number(driving_force_z, 'driving_force_z')
 
         self._set_args([self.output_interval, self.driving_force_x, self.driving_force_y, self.driving_force_z])
-        
+
+
+class ComputeGKMA(Keyword):
+
+    def __init__(self, sample_interval, first_mode, last_mode, bin_option, size):
+        """
+        Calculates the modal heat current using the Green-Kubo modal analysis (GKMA) method. Outputs data to the
+        heatmode.out file.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_gkma_keyword
+
+        Args:
+            sample_interval (int): The sampling interval (in number of steps) used to compute the modal heat current.
+            first_mode (int): First mode in the eigenvector.in file to include in the calculation.
+            last_mode (int): Last mode in the eigenvector.in file to include in the calculation.
+            bin_option (str): Only 'bin_size' or 'f_bin_size' are accepted.
+            size (int or float): If bin_option == 'bin_size', this is an integer describing how many modes per bin. If
+                bin_option == 'f_bin_size', this describes bin size in THz.
+        """
+        super().__init__('compute_gkma', False)
+        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
+        # TODO check that last_mode < 3*num_atoms
+        self.last_mode = cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
+
+        if bin_option == 'bin_size':
+            self.bin_option = bin_option
+            self.size = cond_assign_int(size, 0, op.gt, 'size')
+        elif bin_option == 'f_bin_size':
+            self.bin_option = bin_option
+            self.size = cond_assign(size, 0, op.gt, 'size')
+        else:
+            raise ValueError("The bin_option parameter must be 'bin_size' or 'f_bin_size'.")
+
+        # TODO add hidden arguments?
+
+        self._set_args([self.sample_interval, self.first_mode, self.last_mode, self.bin_option, self.size])
+
+
+
