@@ -9,7 +9,7 @@ class Simulation:
 
     # TODO Add runs
     # TODO add attach xyz file
-    # TODO add potentials
+    # TODO add potentials --> not to be used as a standard keyword
     # TODO add working directory
 
     def __init__(self, directory='.'):
@@ -43,6 +43,7 @@ class Run:
     # TODO make sure that there is an NVT or NPT set for compute_hnemd (not langevin)
     # TODO make run class be initialized with a number of timesteps
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
+    # TODO ensure that minimize comes after the potentials have been defined
 
 
 

@@ -793,3 +793,27 @@ class Run(Keyword):
         super().__init__('run', False)
         self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
         self._set_args([self.number_of_steps])
+
+
+class Minimize(Keyword):
+
+    def __init__(self, force_tolerance, max_iterations, method='sd'):
+        """
+        Minimizes the energy of the system. Currently only the steepest descent method has been implemented.
+
+        https://gpumd.zheyongfan.org/index.php/The_minimize_keyword
+
+        Args:
+            force_tolerance (float): The maximum force component allowed for minimization to continue. [eV/A]
+            max_iterations (int): Number of iterations to perform before the minimization stops.
+            method (str): Only 'sd' is supported at this time.
+        """
+        super().__init__('minimize', False)
+        self.force_tolerance = assign_number(force_tolerance, 'force_tolerance')
+        self.max_iterations = cond_assign_int(max_iterations, 0, op.gt, 'max_iterations')
+        if not method == 'sd':
+            raise ValueError("Only the steepest descent method is implemented. The 'method' parameter must be 'sd'.")
+        self.method = method
+        self._set_args([self.method, self.force_tolerance, self.max_iterations])
+        
+
