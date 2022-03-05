@@ -8,17 +8,18 @@ from util import cond_assign, cond_assign_int, assign_bool, assign_number
 
 class Keyword:
 
-    def __init__(self, keyword, propagating):
+    def __init__(self, keyword, propagating=False, take_immediate_action=False):
         """
 
         Args:
             keyword (str): The keyword for the run.in file
-
             propagating (bool): Used to determine if a keyword propogates betwen runs.
-
+            take_immediate_action (bool): Used to determine if a keword is evaluated immediately. If True, only one
+                keyword allowed for each run.
         """
         self.propagating = propagating
         self.keyword = keyword
+        self.take_immediate_action = take_immediate_action
 
         self.required_args = None
         self.optional_args = None
@@ -70,7 +71,7 @@ class Velocity(Keyword):
         Args:
             initial_temperature (float): Initial temperature of the system. [K]
         """
-        super().__init__('velocity', False)
+        super().__init__('velocity', take_immediate_action=True)
         self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
         self._set_args([self.initial_temperature])
 
@@ -92,7 +93,7 @@ class TimeStep(Keyword):
             dt_in_fs (float): The time step to use for integration [fs]
             max_distance_per_step (float): The maximum distance an atom can travel within one step [Angstroms]
         """
-        super().__init__('time_step', True)
+        super().__init__('time_step', propagating=True)
         self.dt_in_fs = cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
 
         optional = None
@@ -115,7 +116,7 @@ class Ensemble(Keyword):
             ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
                                     'heat_nhc', 'heat_bdp', 'heat_lan'
         """
-        super().__init__('ensemble', False)
+        super().__init__('ensemble')
         if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
                                     'heat_nhc', 'heat_bdp', 'heat_lan']):
             raise ValueError(f"{ensemble_method} is not an accepted ensemble method.")
@@ -295,7 +296,7 @@ class Neighbor(Keyword):
             skin_distance (float): Difference between the cutoff distance for the neighbor list construction and force
                                    evaluation.
         """
-        super().__init__('neighbor', False)
+        super().__init__('neighbor')
         self.skin_distance = cond_assign(skin_distance, 0, op.gt, 'skin_distance')
         self._set_args([self.skin_distance])
 
@@ -334,7 +335,7 @@ class Deform(Keyword):
             deform_y (bool): True to deform in direction, False to not.
             deform_z (bool): True to deform in direction, False to not.
         """
-        super().__init__('deform', False)
+        super().__init__('deform')
         if not (isinstance(deform_x, bool) and isinstance(deform_y, bool) and isinstance(deform_z, bool)):
             raise ValueError("Deform parameters must be a boolean.")
         if not (deform_x or deform_y or deform_z):
@@ -357,7 +358,7 @@ class DumpThermo(Keyword):
         Args:
             interval (int): Number of time steps between each dump of the thermodynamic data.
         """
-        super().__init__('dump_thermo', False)
+        super().__init__('dump_thermo')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
 
@@ -376,7 +377,7 @@ class DumpPosition(Keyword):
             group_id (int): The group ID of the atoms to dump the position of.
             precision (str): Only 'single' or 'double' is accepted. The '%g' format is used if nothing specified.
         """
-        super().__init__('dump_position', False)
+        super().__init__('dump_position')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self.precision = None
 
@@ -406,7 +407,7 @@ class DumpNetCDF(Keyword):
             interval (int): Number of time steps between each dump of the position data.
             precision (str): Only 'single' or 'double' is accepted. The default is 'double'.
         """
-        super().__init__('dump_netcdf', False)
+        super().__init__('dump_netcdf')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
 
         options = list()
@@ -430,7 +431,7 @@ class DumpRestart(Keyword):
         Args:
             interval (int): Number of time steps between each dump of the restart data.
         """
-        super().__init__('dump_restart', False)
+        super().__init__('dump_restart')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
 
@@ -448,7 +449,7 @@ class DumpVelocity(Keyword):
             grouping_method (int): The grouping method to use.
             group_id (int): The group ID of the atoms to dump the velocity of.
         """
-        super().__init__('dump_velocity', False)
+        super().__init__('dump_velocity')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
 
         options = list()
@@ -470,7 +471,7 @@ class DumpForce(Keyword):
             grouping_method (int): The grouping method to use.
             group_id (int): The group ID of the atoms to dump the force of.
         """
-        super().__init__('dump_force', False)
+        super().__init__('dump_force')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
 
         options = list()
@@ -491,7 +492,7 @@ class DumpEXYZ(Keyword):
             has_velocity (bool): True to dump velocity data, False to not dump velocity data.
             has_force (bool): True to dump force data, False to not dump force data.
         """
-        super().__init__('dump_exyz', False)
+        super().__init__('dump_exyz')
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self.has_velocity = assign_bool(has_velocity, 'has_velocity')
         self.has_force = assign_bool(has_force, 'has_force')
@@ -518,7 +519,7 @@ class Compute(Keyword):
             jp (bool): True to output potential part of the heat current vector, False otherwise.
             jk (bool): True to output kinetic part of the heat current vector, False otherwise.
         """
-        super().__init__('compute', False)
+        super().__init__('compute')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
         # TODO add grouping_method check
@@ -561,7 +562,7 @@ class ComputeSHC(Keyword):
             grouping_method (int): The grouping method to use.
             group_id (int): The group ID of the atoms to calculate the spectral heat current of.
         """
-        super().__init__('compute_shc', False)
+        super().__init__('compute_shc')
         sample_interval = cond_assign_int(sample_interval, 1, op.ge, 'sample_interval')
         self.sample_interval = cond_assign_int(sample_interval, 10, op.le, 'sample_interval')
         num_corr_steps = cond_assign_int(num_corr_steps, 100, op.ge, 'num_corr_steps')
@@ -601,7 +602,7 @@ class ComputeDOS(Keyword):
             grouping_method (int): The grouping method to use.
             group_id (int): The group ID of the atoms to calculate the spectral heat current of.
         """
-        super().__init__('compute_dos', False)
+        super().__init__('compute_dos')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
         self.max_omega = cond_assign(max_omega, 0, op.gt, 'max_omega')
@@ -634,7 +635,7 @@ class ComputeSDC(Keyword):
             grouping_method (int): The grouping method to use.
             group_id (int): The group ID of the atoms to calculate the spectral heat current of.
         """
-        super().__init__('compute_sdc', False)
+        super().__init__('compute_sdc')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
 
@@ -659,7 +660,7 @@ class ComputeHAC(Keyword):
             num_corr_steps (int): Total number of correlation steps.
             output_interval (int): The output interval of the HAC and RTC data.
         """
-        super().__init__('compute_hac', False)
+        super().__init__('compute_hac')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
         self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
@@ -681,7 +682,7 @@ class ComputeHNEMD(Keyword):
             driving_force_y (float): The y-component of the driving force. [Angstroms^-1]
             driving_force_z (float): The z-component of the driving force. [Angstroms^-1]
         """
-        super().__init__('compute_hnemd', False)
+        super().__init__('compute_hnemd')
         self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
         self.driving_force_x = assign_number(driving_force_x, 'driving_force_x')
         self.driving_force_y = assign_number(driving_force_y, 'driving_force_y')
@@ -707,7 +708,7 @@ class ComputeGKMA(Keyword):
             size (int or float): If bin_option == 'bin_size', this is an integer describing how many modes per bin. If
                 bin_option == 'f_bin_size', this describes bin size in THz.
         """
-        super().__init__('compute_gkma', False)
+        super().__init__('compute_gkma')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
         # TODO check that last_mode < 3*num_atoms
@@ -749,7 +750,7 @@ class ComputeHNEMA(Keyword):
             size (int or float): If bin_option == 'bin_size', this is an integer describing how many modes per bin. If
                 bin_option == 'f_bin_size', this describes bin size in THz.
         """
-        super().__init__('compute_hnema', False)
+        super().__init__('compute_hnema')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
         if not (self.output_interval % self.sample_interval == 0):
@@ -790,7 +791,7 @@ class Run(Keyword):
         Args:
             number_of_steps (int): Number of steps to run.
         """
-        super().__init__('run', False)
+        super().__init__('run', take_immediate_action=True)
         self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
         self._set_args([self.number_of_steps])
 
@@ -808,7 +809,7 @@ class Minimize(Keyword):
             max_iterations (int): Number of iterations to perform before the minimization stops.
             method (str): Only 'sd' is supported at this time.
         """
-        super().__init__('minimize', False)
+        super().__init__('minimize', take_immediate_action=True)
         self.force_tolerance = assign_number(force_tolerance, 'force_tolerance')
         self.max_iterations = cond_assign_int(max_iterations, 0, op.gt, 'max_iterations')
         if not method == 'sd':
@@ -830,7 +831,7 @@ class ComputeCohesive(Keyword):
             end_factor (float): Larger box-scaling factor
             num_points (int): Number of points sampled uniformly from e1 to e1.
         """
-        super().__init__('compute_cohesive', False)
+        super().__init__('compute_cohesive', take_immediate_action=True)
         self.start_factor = cond_assign(start_factor, 0, op.gt, 'start_factor')
         self.end_factor = cond_assign(end_factor, self.start_factor, op.gt, 'end_factor')
         self.num_points = cond_assign_int(num_points, 2, op.ge, 'num_points')
@@ -850,7 +851,7 @@ class ComputeElastic(Keyword):
             strain_value (float): The amount of strain to be applied in the calculations.
             symmetry_type (str): Currently only 'cubic' supported.
         """
-        super().__init__('compute_elastic', False)
+        super().__init__('compute_elastic', take_immediate_action=True)
         strain_value = cond_assign(strain_value, 0, op.gt, 'strain_value')
         self.strain_value = cond_assign(strain_value, 0.1, op.le, 'strain_value')
         if not symmetry_type == 'cubic':
@@ -877,9 +878,11 @@ class ComputePhonon(Keyword):
             displacement (float): The displacement for calculating the force constants using the finite-displacment
                 method. [Angstroms]
         """
-        super().__init__('compute_phonon', False)
+        super().__init__('compute_phonon', take_immediate_action=True)
         self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
         self.displacement = cond_assign(displacement, 0, op.gt, 'displacement')
 
         self._set_args([self.cutoff, self.displacement])
+
+# TODO add potentials here?
 
