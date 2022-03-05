@@ -837,3 +837,24 @@ class ComputeCohesive(Keyword):
 
         self._set_args([self.start_factor, self.end_factor, self.num_points])
 
+
+class ComputeElastic(Keyword):
+
+    def __init__(self, strain_value, symmetry_type):
+        """
+        Computes the elastic constants and outputs to the elastic.out file.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_elastic_keyword
+
+        Args:
+            strain_value (float): The amount of strain to be applied in the calculations.
+            symmetry_type (str): Currently only 'cubic' supported.
+        """
+        super().__init__('compute_elastic', False)
+        strain_value = cond_assign(strain_value, 0, op.gt, 'strain_value')
+        self.strain_value = cond_assign(strain_value, 0.1, op.le, 'strain_value')
+        if not symmetry_type == 'cubic':
+            raise ValueError("The symmetry_type parameter must be 'cubic' at this time.")
+        self.symmetry_type = symmetry_type
+
+        self._set_args([self.strain_value, self.symmetry_type])
