@@ -858,3 +858,28 @@ class ComputeElastic(Keyword):
         self.symmetry_type = symmetry_type
 
         self._set_args([self.strain_value, self.symmetry_type])
+
+
+class ComputePhonon(Keyword):
+
+    def __init__(self, cutoff, displacement):
+        """
+        Computes the phonon dispersion using the finite-displacement method. Outputs data to the D.out and omega2.out
+        files.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_phonon_keyword
+
+        A special eigenvector.in file can be generated for GKMA and HNEMA methods using compute_phonon. Follow the
+        directions here: https://gpumd.zheyongfan.org/index.php/The_eigenvector.in_input_file
+
+        Args:
+            cutoff (float): Cutoff distance for calculating the force constants. [Angstroms]
+            displacement (float): The displacement for calculating the force constants using the finite-displacment
+                method. [Angstroms]
+        """
+        super().__init__('compute_phonon', False)
+        self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
+        self.displacement = cond_assign(displacement, 0, op.gt, 'displacement')
+
+        self._set_args([self.cutoff, self.displacement])
+
