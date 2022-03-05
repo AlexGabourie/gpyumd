@@ -817,3 +817,23 @@ class Minimize(Keyword):
         self._set_args([self.method, self.force_tolerance, self.max_iterations])
         
 
+class ComputeCohesive(Keyword):
+
+    def __init__(self, start_factor, end_factor, num_points):
+        """
+        Computes the cohesive energy curve with outputs going to the cohesive.out file.
+
+        https://gpumd.zheyongfan.org/index.php/The_compute_cohesive_keyword
+
+        Args:
+            start_factor (float): Smaller box-scaling factor
+            end_factor (float): Larger box-scaling factor
+            num_points (int): Number of points sampled uniformly from e1 to e1.
+        """
+        super().__init__('compute_cohesive', False)
+        self.start_factor = cond_assign(start_factor, 0, op.gt, 'start_factor')
+        self.end_factor = cond_assign(end_factor, self.start_factor, op.gt, 'end_factor')
+        self.num_points = cond_assign_int(num_points, 2, op.ge, 'num_points')
+
+        self._set_args([self.start_factor, self.end_factor, self.num_points])
+
