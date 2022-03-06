@@ -47,8 +47,8 @@ def __get_atom_line(atom, velocity, groups, type_dict, info):
                 optional += ' ' + ' '.join([str(val) for val in option['groups']])
         except KeyError:
             pass
-    required = ' '.join([str(type_dict[atom.symbol])] + \
-                        [str(val) for val in list(atom.position)] + \
+    required = ' '.join([str(type_dict[atom.symbol])] +
+                        [str(val) for val in list(atom.position)] +
                         [str(atom.mass)])
 
     return required + optional
@@ -56,7 +56,7 @@ def __get_atom_line(atom, velocity, groups, type_dict, info):
 
 def __set_atoms(atoms, types):
     """
-    Sets the atom symbols for atoms loaded from GPUMD where in.xyz does not
+    Sets the atom symbols for atoms loaded from GPUMD where xyz.in does not
     contain that information
 
     Args:
@@ -128,7 +128,7 @@ def __atom_group_sortkey(atom, info=None, group_index=None, order=None):
 #########################################
 
 
-def load_xyz(filename='xyz.in', atom_types=None):
+def load_xyz_in(filename='xyz.in', atom_types=None):
     """
     Reads and returns the structure input file from GPUMD.
 
@@ -200,7 +200,7 @@ def load_xyz(filename='xyz.in', atom_types=None):
     return atoms, max_neighbors, cutoff
 
 
-def import_trajectory(filename='movie.xyz', in_file=None, atom_types=None):
+def load_movie_xyz(filename='movie.xyz', in_file=None, atom_types=None):
     """
     Reads the trajectory from GPUMD run and creates a list of ASE atoms.
 
@@ -220,7 +220,7 @@ def import_trajectory(filename='movie.xyz', in_file=None, atom_types=None):
     """
     # get extra information about system if wanted
     if in_file:
-        atoms, _, _ = load_xyz(in_file, atom_types)
+        atoms, _, _ = load_xyz_in(in_file, atom_types)
         pbc = atoms.get_pbc()
     else:
         pbc = None
@@ -328,7 +328,7 @@ def convert_gpumd_atoms(in_file='xyz.in', out_filename='in.xyz', output_format='
             List of atom types (elements).
 
     """
-    atoms, max_neighbors, cutoff = load_xyz(in_file, atom_types)
+    atoms, max_neighbors, cutoff = load_xyz_in(in_file, atom_types)
     write(out_filename, atoms, output_format)
 
 
@@ -355,11 +355,11 @@ def lammps_atoms_to_gpumd(filename, max_neighbors, cutoff, style='atomic', gpumd
     """
     # Load atoms
     atoms = read(filename, format='lammps-data', style=style)
-    ase_atoms_to_gpumd(atoms, max_neighbors, cutoff, gpumd_file=gpumd_file)
+    atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file=gpumd_file)
 
 
-def ase_atoms_to_gpumd(atoms, max_neighbors, cutoff, gpumd_file='xyz.in', sort_key=None,
-                       order=None, group_index=None):
+def atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file='xyz.in', sort_key=None,
+                    order=None, group_index=None):
     """
     Converts ASE atoms to GPUMD compatible position file.
 
@@ -423,8 +423,8 @@ def ase_atoms_to_gpumd(atoms, max_neighbors, cutoff, gpumd_file='xyz.in', sort_k
     # prepare cell to write
     num_atoms = len(atoms)
     pbc = [str(1) if val else str(0) for val in atoms.get_pbc()]
-    lx, ly, lz, a1, a2, a3 = tuple(atoms.get_cell_lengths_and_angles())
-    summary = ' '.join([str(N), str(max_neighbors), str(cutoff), '@',
+    lx, ly, lz, a1, a2, a3 = tuple(atoms.cell.cellpar())
+    summary = ' '.join([str(num_atoms), str(max_neighbors), str(cutoff), '@',
                         '1' if velocity else '0',
                         num_groups if groups else '0', '\n'])
 
