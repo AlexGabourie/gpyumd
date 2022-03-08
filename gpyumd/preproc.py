@@ -9,118 +9,14 @@ __email__ = "agabourie47@gmail.com"
 # Structure preprocessing
 #########################################
 
-def __get_group(split, position, direction):
-    """
-    Gets the group that an atom belongs to based on its position. Only works in
-    one direction as it is used for NEMD.
-
-    Args:
-        split (list(float)):
-            List of boundaries. First element should be lower boundary of
-            sim. box in specified direction and the last the upper.
-
-        position (float):
-            Position of the atom
-
-        direction (str):
-            Which direction the split will work
-
-    Returns:
-        int: Group of atom
-
-    """
-    if direction == 'x':
-        d = position[0]
-    elif direction == 'y':
-        d = position[1]
-    else:
-        d = position[2]
-    errmsg = 'Out of bounds error: {}'.format(d)
-    for i, val in enumerate(split[:-1]):
-        if i == 0 and d < val:
-            print(errmsg)
-            return -1
-        if val <= d < split[i + 1]:
-            return i
-    print(errmsg)
-    return -1
 
 
-def __init_index(index, info, num_atoms):
-    """
-    Initializes the index key for the info dict.
-
-    Args:
-        index (int):
-            Index of atom in the Atoms object.
-
-        info (dict):
-            Dictionary that stores the velocity, and groups.
-
-        num_atoms (int):
-            Number of atoms in the Atoms object.
-
-    Returns:
-        int: Index of atom in the Atoms object.
-
-    """
-    if index == num_atoms - 1:
-        index = -1
-    if index not in info:
-        info[index] = dict()
-    return index
 
 
-def __handle_end(info, num_atoms):
-    """
-    Duplicates the index -1 entry for key that's num_atoms-1. Works in-place.
-
-    Args:
-        info (dict):
-            Dictionary that stores the velocity, and groups.
-
-        num_atoms (int):
-            Number of atoms in the Atoms object.
-
-    """
-    info[num_atoms - 1] = info[-1]
 
 
-def add_group_by_position(split, atoms, direction):
-    """
-    Assigns groups to all atoms based on its position. Only works in
-    one direction as it is used for NEMD.
-    Returns a bookkeeping parameter, but atoms will be udated in-place.
 
-    Args:
-        split (list(float)):
-            List of boundaries. First element should be lower boundary of sim.
-            box in specified direction and the last the upper.
 
-        atoms (ase.Atoms):
-            Atoms to group
-
-        direction (str):
-            Which direction the split will work.
-
-    Returns:
-        int: A list of number of atoms in each group.
-
-    """
-    info = atoms.info
-    counts = [0] * (len(split) - 1)
-    num_atoms = len(atoms)
-    for index, atom in enumerate(atoms):
-        index = __init_index(index, info, num_atoms)
-        i = __get_group(split, atom.position, direction)
-        if 'groups' in info[index]:
-            info[index]['groups'].append(i)
-        else:
-            info[index]['groups'] = [i]
-        counts[i] += 1
-    __handle_end(info, num_atoms)
-    atoms.info = info
-    return counts
 
 
 def add_group_by_type(atoms, types):
