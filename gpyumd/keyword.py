@@ -6,6 +6,7 @@ import numbers
 from util import cond_assign, cond_assign_int, assign_bool, assign_number
 
 
+# TODO change such that we attach a group from the structure to a keyword --> do after some primary testing
 class Keyword:
 
     def __init__(self, keyword, propagating=False, take_immediate_action=False):

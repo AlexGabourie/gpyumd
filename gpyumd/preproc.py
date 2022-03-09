@@ -9,59 +9,6 @@ __email__ = "agabourie47@gmail.com"
 # Structure preprocessing
 #########################################
 
-
-
-
-
-
-
-
-
-
-
-def add_group_by_type(atoms, types):
-    """
-    Assigns groups to all atoms based on atom types. Returns a
-    bookkeeping parameter, but atoms will be udated in-place.
-
-    Args:
-        atoms (ase.Atoms):
-            Atoms to group
-
-        types (dict):
-            Dictionary with types for keys and group as a value.
-            Only one group allowed per atom. Assumed groups are integers
-            starting at 0 and increasing in steps of 1. Ex. range(0,10).
-
-    Returns:
-        int: A list of number of atoms in each group.
-
-    """
-    # atom symbol checking
-    all_symbols = list(types)
-    # check that symbol set matches symbol set of atoms
-    if set(atoms.get_chemical_symbols()) - set(all_symbols):
-        raise ValueError('Group symbols do not match atoms symbols.')
-    if not len(set(all_symbols)) == len(all_symbols):
-        raise ValueError('Group not assigned to all atom types.')
-
-    num_groups = len(set([types[sym] for sym in set(all_symbols)]))
-    num_atoms = len(atoms)
-    info = atoms.info
-    counts = [0] * num_groups
-    for index, atom in enumerate(atoms):
-        index = __init_index(index, info, num_atoms)
-        group = types[atom.symbol]
-        counts[group] += 1
-        if 'groups' in info[index]:
-            info[index]['groups'].append(group)
-        else:
-            info[index]['groups'] = [group]
-    __handle_end(info, num_atoms)
-    atoms.info = info
-    return counts
-
-
 def set_velocities(atoms, custom=None):
     """
     Sets the 'velocity' part of the atoms to be used in GPUMD.

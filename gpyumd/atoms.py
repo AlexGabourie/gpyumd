@@ -1,5 +1,6 @@
 import numpy as np
-from ase import Atom, Atoms
+from ase import Atoms
+from abc import ABC, abstractmethod
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -102,7 +103,7 @@ class GpumdAtoms(Atoms):
                          pbc, celldisp, constraint, calculator, info, velocities)
         self.groups = list()  # list of group objects
 
-    class GroupMethod:
+    class GroupMethod(ABC):
 
         def __init__(self, group_type=None):
             """
@@ -112,6 +113,26 @@ class GpumdAtoms(Atoms):
             self.num_groups = None
             self.group_type = group_type
             self.counts = None
+
+        @abstractmethod
+        def update(self, atoms):
+            pass
+
+    class GroupByType(GroupMethod):
+
+        def __init__(self, types):
+            super().__init__(group_type='type')
+            self.types = types
+            self.num_groups = len(set(types.values()))
+            self.counts = np.zeros(self.num_groups, dtype=int)
+
+        def update(self, atoms):
+            num_atoms = len(atoms)
+            self.group = np.full(num_atoms, -1, dtype=int)
+            for index, atom in enumerate(atoms):
+                atom_group = self.types[atom.symbol]
+                self.counts[atom_group] += 1
+                self.group[index] = atom_group
 
     class GroupByPosition(GroupMethod):
 
@@ -129,7 +150,6 @@ class GpumdAtoms(Atoms):
                 atom_group = self.get_group(atom.position)
                 self.group[index] = atom_group
                 self.counts[atom_group] += 1
-            return self.counts
 
         def get_group(self, position):
             """
@@ -158,7 +178,7 @@ class GpumdAtoms(Atoms):
                     return split_idx
             raise ValueError(errmsg)
 
-    def add_group_by_position(self, split, direction):
+    def group_by_position(self, split, direction):
         """
         Assigns groups to all atoms based on its position. Only works in
         one direction as it is used for NEMD.
@@ -187,8 +207,37 @@ class GpumdAtoms(Atoms):
             raise ValueError("The 'split' parameter must be ascending or descending.")
 
         group = self.GroupByPosition(split, direction)
-        return group.update(self)
+        group.update(self)
+        self.groups.append(group)
+        return group.counts
 
+    def group_by_type(self, types):
+        """
+        Assigns groups to all atoms based on atom types. Returns a
+        bookkeeping parameter, but atoms will be udated in-place.
+
+        Args:
+            types (dict):
+                Dictionary with types for keys and group as a value.
+                Only one group allowed per atom. Assumed groups are integers
+                starting at 0 and increasing in steps of 1. Ex. range(0,10).
+
+        Returns:
+            int: A list of number of atoms in each group.
+
+        """
+        # atom symbol checking
+        all_symbols = list(types)
+        # check that symbol set matches symbol set of atoms
+        if set(self.get_chemical_symbols()) - set(all_symbols):
+            raise ValueError('Group symbols do not match atoms symbols.')
+        if not len(set(all_symbols)) == len(all_symbols):
+            raise ValueError('Group not assigned to all atom types.')
+
+        group = self.GroupByType(types)
+        group.update(self)
+        self.groups.append(group)
+        return group.counts
 
 
 
