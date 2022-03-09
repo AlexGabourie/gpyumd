@@ -886,4 +886,3 @@ class ComputePhonon(Keyword):
         self._set_args([self.cutoff, self.displacement])
 
 # TODO add potentials here?
-
