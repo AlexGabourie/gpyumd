@@ -101,7 +101,15 @@ class GpumdAtoms(Atoms):
         """
         super().__init__(symbols, positions, numbers, tags, momenta, masses, magmoms, charges, scaled_positions, cell,
                          pbc, celldisp, constraint, calculator, info, velocities)
-        self.groups = list()  # list of group objects
+        self.groups = dict()  # A dictionary of grouping methods
+
+    def add_group_method(self, group, name):
+        if not name:
+            name = f"group_method_{len(self.groups.keys())}"
+        if name in self.groups.keys():
+            print(f"{name} already exists. Existing group will be overwritten.")
+        self.groups[name] = group
+        return name
 
     class GroupMethod(ABC):
 
@@ -170,7 +178,7 @@ class GpumdAtoms(Atoms):
             else:
                 dim_pos = position[2]
             errmsg = f"The position {dim_pos} in the {self.direction} direction is out of bounds based" \
-                     f"on the split provided."
+                     f" on the split provided."
             for split_idx, boundary in enumerate(self.split[:-1]):
                 if split_idx == 0 and dim_pos < boundary:
                     raise ValueError(errmsg)
@@ -178,7 +186,7 @@ class GpumdAtoms(Atoms):
                     return split_idx
             raise ValueError(errmsg)
 
-    def group_by_position(self, split, direction):
+    def group_by_position(self, split, direction, name=None):
         """
         Assigns groups to all atoms based on its position. Only works in
         one direction as it is used for NEMD.
@@ -186,32 +194,37 @@ class GpumdAtoms(Atoms):
 
         Args:
             split (list(float)):
-                List of boundaries. First element should be lower boundary of sim.
+                List of boundaries in ascending order. First element should be lower boundary of sim.
                 box in specified direction and the last the upper.
 
             direction (str):
                 Which direction the split will work.
 
+            name (str):
+                The name of the group to be used. Can be provided by the user, otherwise will be generated.
+
         Returns:
+            str: A string with the name of the grouping method.
             int: A list of number of atoms in each group.
 
         """
         if not (direction in ['x', 'y', 'z']):
             raise ValueError("The 'direction' parameter must be in 'x', 'y', 'or 'z'.")
 
-        if len(split) < 2:
+        splitlen = len(split)
+        if splitlen < 2:
             raise ValueError("The 'split' parameter must be greater than length 1.")
 
         # check for ascending or descending
-        if all([split[i+1] > split[i] for i in split[:-1]]) or all([split[i+1] < split[i] for i in split[:-1]]):
-            raise ValueError("The 'split' parameter must be ascending or descending.")
+        if not all([split[i+1] > split[i] for i in range(splitlen-1)]):
+            raise ValueError("The 'split' parameter must be ascending.")
 
         group = self.GroupByPosition(split, direction)
         group.update(self)
-        self.groups.append(group)
-        return group.counts
+        name = self.add_group_method(group, name)
+        return name, group.counts
 
-    def group_by_type(self, types):
+    def group_by_type(self, types, name=None):
         """
         Assigns groups to all atoms based on atom types. Returns a
         bookkeeping parameter, but atoms will be udated in-place.
@@ -222,7 +235,11 @@ class GpumdAtoms(Atoms):
                 Only one group allowed per atom. Assumed groups are integers
                 starting at 0 and increasing in steps of 1. Ex. range(0,10).
 
+            name (str):
+                The name of the group to be used. Can be provided by the user, otherwise will be generated.
+
         Returns:
+            str: A string with the name of the grouping method.
             int: A list of number of atoms in each group.
 
         """
@@ -236,8 +253,8 @@ class GpumdAtoms(Atoms):
 
         group = self.GroupByType(types)
         group.update(self)
-        self.groups.append(group)
-        return group.counts
+        name = self.add_group_method(group, name)
+        return name, group.counts
 
 
 
