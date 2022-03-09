@@ -101,15 +101,13 @@ class GpumdAtoms(Atoms):
         """
         super().__init__(symbols, positions, numbers, tags, momenta, masses, magmoms, charges, scaled_positions, cell,
                          pbc, celldisp, constraint, calculator, info, velocities)
-        self.groups = dict()  # A dictionary of grouping methods
+        self.groups = list()  # A list of grouping methods
+        self.num_groups = 0
 
-    def add_group_method(self, group, name):
-        if not name:
-            name = f"group_method_{len(self.groups.keys())}"
-        if name in self.groups.keys():
-            print(f"{name} already exists. Existing group will be overwritten.")
-        self.groups[name] = group
-        return name
+    def add_group_method(self, group):
+        self.groups.append(group)
+        self.num_groups += 1
+        return self.num_groups - 1
 
     class GroupMethod(ABC):
 
@@ -186,7 +184,7 @@ class GpumdAtoms(Atoms):
                     return split_idx
             raise ValueError(errmsg)
 
-    def group_by_position(self, split, direction, name=None):
+    def group_by_position(self, split, direction):
         """
         Assigns groups to all atoms based on its position. Only works in
         one direction as it is used for NEMD.
@@ -199,9 +197,6 @@ class GpumdAtoms(Atoms):
 
             direction (str):
                 Which direction the split will work.
-
-            name (str):
-                The name of the group to be used. Can be provided by the user, otherwise will be generated.
 
         Returns:
             str: A string with the name of the grouping method.
@@ -221,10 +216,10 @@ class GpumdAtoms(Atoms):
 
         group = self.GroupByPosition(split, direction)
         group.update(self)
-        name = self.add_group_method(group, name)
-        return name, group.counts
+        group_idx = self.add_group_method(group)
+        return group_idx, group.counts
 
-    def group_by_type(self, types, name=None):
+    def group_by_type(self, types):
         """
         Assigns groups to all atoms based on atom types. Returns a
         bookkeeping parameter, but atoms will be udated in-place.
@@ -234,9 +229,6 @@ class GpumdAtoms(Atoms):
                 Dictionary with types for keys and group as a value.
                 Only one group allowed per atom. Assumed groups are integers
                 starting at 0 and increasing in steps of 1. Ex. range(0,10).
-
-            name (str):
-                The name of the group to be used. Can be provided by the user, otherwise will be generated.
 
         Returns:
             str: A string with the name of the grouping method.
@@ -253,8 +245,8 @@ class GpumdAtoms(Atoms):
 
         group = self.GroupByType(types)
         group.update(self)
-        name = self.add_group_method(group, name)
-        return name, group.counts
+        group_idx = self.add_group_method(group)
+        return group_idx, group.counts
 
 
 
