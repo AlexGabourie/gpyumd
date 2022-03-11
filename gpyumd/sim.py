@@ -36,7 +36,9 @@ class Run:
         """
         self.atoms = atoms
         self.keywords = list()
+        # TODO add variables that track if there is an ensemble defined or an immediate action
         pass
+
     # TODO enable user to attach results to a run
     # TODO ensure that only one ensemble is being defined in a run
     # TODO handle propagating keywords
@@ -70,8 +72,20 @@ class Run:
             if keyword.group_id >= self.atoms.groups[0].num_groups:
                 raise ValueError(f"The group_id given for {keyword.keyword} is too large for grouping method 0.")
 
-        # TODO many more checks
+        # Check for heating ensembles
+        if keyword.keyword == 'ensemble':
+            if not keyword.ensemble.parameters_set:
+                raise ValueError(f"Cannot add an ensemble before its parameters are set.")
+
+            if keyword.ensemble_type == 'heat':
+                if self.atoms.num_groups == 0:
+                    raise ValueError(f"At least one grouping method is required for the {keyword.keyword} "
+                                     f"{keyword.ensemble_method} keyword.")
+
+                if self.atoms.num_groups <= keyword.ensemble.source_group_id or \
+                        self.atoms.num_groups <= keyword.ensemble.sink_group_id:
+                    raise ValueError(f"The source or sink group is too large for the ensemble.")
+        # TODO finish ensemble checking
+
+        # TODO add a function that checks the tau-timestep relationship for the ensemble, this can be re-run when needed
         self.keywords.append(keyword)
-
-
-
