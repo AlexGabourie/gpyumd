@@ -1,6 +1,8 @@
 import numpy as np
 from ase import Atoms
 from abc import ABC, abstractmethod
+from gpyumd.util import check_list, check_range
+from numpy import prod
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -104,10 +106,43 @@ class GpumdAtoms(Atoms):
         self.groups = list()  # A list of grouping methods
         self.num_groups = 0
 
+        # only used for setting up phonon calculations
+        self.unitcell = None  # The atom indices that make up a unit cell
+        self.basis = None  # The basis position of each atom
+
     def add_group_method(self, group):
         self.groups.append(group)
         self.num_groups += 1
         return self.num_groups - 1
+
+    def add_basis(self, index=None, mapping=None):
+        """
+        Assigns a basis index for each atom in atoms. Updates atoms.
+
+        Args:
+            index (list(int)):
+                Atom indices of those in the unit cell. Order is important.
+
+            mapping (list(int)):
+                Mapping of all atoms to the relevant basis positions
+
+
+        """
+        num_atoms = len(self)
+        self.unitcell = list()
+        self.basis = list()
+        if index:
+            if (mapping is None) or (len(mapping) != num_atoms):
+                raise ValueError("Full atom mapping required if index is provided.")
+            for unit_cell_idx in index:
+                self.unitcell.append(unit_cell_idx)
+            for atom_idx in range(num_atoms):
+                self.basis.append(mapping[atom_idx])
+        else:
+            # if no index provided, assume atoms is unit cell
+            for atom_idx in range(num_atoms):
+                self.unitcell.append(atom_idx)
+                self.basis.append(atom_idx)
 
     class GroupMethod(ABC):
 

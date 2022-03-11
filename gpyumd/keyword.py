@@ -1,9 +1,9 @@
-__author__ = "Alexander Gabourie"
-__email__ = "agabourie47@gmail.com"
-
 import operator as op
 import numbers
 from util import cond_assign, cond_assign_int, assign_bool, assign_number
+
+__author__ = "Alexander Gabourie"
+__email__ = "agabourie47@gmail.com"
 
 
 # TODO change such that we attach a group from the structure to a keyword --> do after some primary testing
