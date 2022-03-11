@@ -4,7 +4,7 @@ import numbers
 
 
 __author__ = "Alexander Gabourie"
-__email__ = "gabourie@stanford.edu"
+__email__ = "agabourie47@gmail.com"
 
 
 def assign_bool(var, varname):
