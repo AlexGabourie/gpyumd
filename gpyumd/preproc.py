@@ -9,36 +9,6 @@ __email__ = "agabourie47@gmail.com"
 # Structure preprocessing
 #########################################
 
-def set_velocities(atoms, custom=None):
-    """
-    Sets the 'velocity' part of the atoms to be used in GPUMD.
-    Custom velocities must be provided. They must also be in
-    the units of eV^(1/2) amu^(-1/2).
-
-    Args:
-        atoms (ase.Atoms):
-            Atoms to assign velocities to.
-
-        custom (list(list)):
-             list of len(atoms) with each element made from
-             a 3-element list for [vx, vy, vz]
-
-    """
-    if not custom:
-        raise ValueError("No velocities provided.")
-
-    num_atoms = len(atoms)
-    info = atoms.info
-    if not len(custom) == num_atoms:
-        return ValueError('Incorrect number of velocities for number of atoms.')
-    for index, (atom, velocity) in enumerate(zip(atoms, custom)):
-        if not len(velocity) == 3:
-            return ValueError('Three components of velocity not provided.')
-        index = __init_index(index, info, num_atoms)
-        info[index]['velocity'] = velocity
-    __handle_end(info, num_atoms)
-    atoms.info = info
-
 
 def __init_index2(index, info): # TODO merge this with other __init_index function
     if index not in info.keys():

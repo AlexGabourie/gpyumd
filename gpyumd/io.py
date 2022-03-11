@@ -12,7 +12,7 @@ __email__ = "agabourie47@gmail.com"
 # Helper Functions
 #########################################
 
-
+# TODO update with ase.atoms velocities
 def __get_atom_line(atom, velocity, groups, type_dict, info):
     """
     Constructs an atom's line in an xyz.in file.
@@ -127,7 +127,7 @@ def __atom_group_sortkey(atom, info=None, group_index=None, order=None):
 # Read Related
 #########################################
 
-
+# TODO update with ase.atoms velocities
 def load_xyz_in(filename='xyz.in', atom_types=None):
     """
     Reads and returns the structure input file from GPUMD.
@@ -357,7 +357,7 @@ def lammps_atoms_to_gpumd(filename, max_neighbors, cutoff, style='atomic', gpumd
     atoms = read(filename, format='lammps-data', style=style)
     atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file=gpumd_file)
 
-
+# TODO update with ase.atoms velocities
 def atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file='xyz.in', sort_key=None,
                     order=None, group_index=None):
     """
