@@ -144,6 +144,29 @@ class GpumdAtoms(Atoms):
                 self.unitcell.append(atom_idx)
                 self.basis.append(atom_idx)
 
+    def repeat(self, rep):
+        """
+        A wrapper of ase.Atoms.repeat that is aware of GPUMD's basis information.
+
+        Args:
+            rep (int | list(3 ints)):
+                List of three positive integers or a single integer
+
+        """
+        rep = check_list(rep, varname='rep', dtype=int)
+        replen = len(rep)
+        if replen == 1:
+            rep = rep * 3
+        elif not replen == 3:
+            raise ValueError("The rep parameter must be a sequence of 1 or 3 integers.")
+        check_range(rep, 2 ** 64)
+        supercell = GpumdAtoms(self.repeat(rep))
+        supercell.unitcell = self.unitcell
+        for i in range(1, prod(rep, dtype=int)):
+            supercell.basis.append(self.basis)
+
+        return supercell
+
     class GroupMethod(ABC):
 
         def __init__(self, group_type=None):
