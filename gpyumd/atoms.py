@@ -104,16 +104,19 @@ class GpumdAtoms(Atoms):
         super().__init__(symbols, positions, numbers, tags, momenta, masses, magmoms, charges, scaled_positions, cell,
                          pbc, celldisp, constraint, calculator, info, velocities)
         self.groups = list()  # A list of grouping methods
-        self.num_groups = 0
+        self.num_group_methods = 0
 
         # only used for setting up phonon calculations
         self.unitcell = None  # The atom indices that make up a unit cell
         self.basis = None  # The basis position of each atom
 
+        _, _, _, a1, a2, a3 = tuple(self.cell.cellpar())
+        self.triclinic = False if a1 == a2 == a3 == 90 else True
+
     def add_group_method(self, group):
         self.groups.append(group)
-        self.num_groups += 1
-        return self.num_groups - 1
+        self.num_group_methods += 1
+        return self.num_group_methods - 1
 
     def add_basis(self, index=None, mapping=None):
         """
