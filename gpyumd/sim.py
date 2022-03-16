@@ -1,6 +1,10 @@
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
+import operator as op
+from gpyumd.keyword import TimeStep
+from gpyumd.util import cond_assign_int
+
 
 class Simulation:
     """
@@ -25,22 +29,31 @@ class Simulation:
         """
         pass
 
+    def add_run(self):
+
+        pass
+
 
 class Run:
 
-    def __init__(self, atoms):
+    def __init__(self, atoms, dt_in_fs=None, number_of_steps=None):
         """
 
         Args:
             atoms: GpumdAtoms
+
+            dt_in_fs: float
+                Time step of simulation in fs. Default is 1 fs.
         """
         self.atoms = atoms
-        self.keywords = list()
+        self.keywords = dict()
+        if not dt_in_fs:
+            dt_in_fs = 1
+        self.time_step = TimeStep(dt_in_fs=dt_in_fs)
+        self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
         # TODO add variables that track if there is an ensemble defined or an immediate action
         pass
 
-    # TODO enable user to attach results to a run
-    # TODO ensure that only one ensemble is being defined in a run
     # TODO handle propagating keywords
     # TODO Coupling time for NVT, NPT, and heat must all follow tau/(time step) >= 1
     # TODO check that triclinic structure used for triclinic NPT
@@ -50,7 +63,6 @@ class Run:
     # TODO make sure there is a grouping method if we want to use Fix keyword
     # TODO check nyquist frequency for a run (DOS)
     # TODO make sure that there is an NVT or NPT set for compute_hnemd (not langevin)
-    # TODO make run class be initialized with a number of timesteps
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
     # TODO ensure that minimize comes after the potentials have been defined
 
@@ -74,6 +86,10 @@ class Run:
 
         # Check for heating ensembles
         if keyword.keyword == 'ensemble':
+            if 'ensemble' in self.keywords.keys():
+                # TODO make replace ensemble?
+                raise ValueError(f"The 'ensemble' keyword has already been used in this run.")
+
             if not keyword.ensemble.parameters_set:
                 raise ValueError(f"Cannot add an ensemble before its parameters are set.")
 
@@ -88,4 +104,4 @@ class Run:
         # TODO finish ensemble checking
 
         # TODO add a function that checks the tau-timestep relationship for the ensemble, this can be re-run when needed
-        self.keywords.append(keyword)
+        self.keywords[keyword.keyword] = keyword
