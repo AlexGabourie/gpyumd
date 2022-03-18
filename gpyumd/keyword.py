@@ -6,7 +6,6 @@ __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-# TODO change such that we attach a group from the structure to a keyword --> do after some primary testing
 class Keyword:
 
     def __init__(self, keyword, propagating=False, take_immediate_action=False):
@@ -26,9 +25,6 @@ class Keyword:
         self.optional_args = None
         self.grouping_method = None
         self.group_id = None
-
-    # TODO add a way to attach xyz files, also add a way to check if keywords are still valid if changing xyz
-    # could be a "check_params" function in each class
 
     def get_command(self):
         # TODO add a universal "to string" command
@@ -273,7 +269,6 @@ class Ensemble(Keyword):
             self.parameters_set = False
 
         def set_parameters(self, temperature, thermostat_coupling, temperature_delta, source_group_id, sink_group_id):
-            # TODO check grouping information with xyz if it exists (only give warning)
             self.temperature = cond_assign(temperature, 0, op.gt, 'temperature')
             self.therostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
@@ -315,10 +310,6 @@ class Fix(Keyword):
         Args:
             group_id: The group id of the atoms to freeze.
         """
-
-        # TODO ensure that group label is not too large
-        # can this work such that the Keyword class can only check if variables are correct, but the output string
-        # is only from the child class?
         super().__init__('fix', False)
         self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
         self._set_args([self.group_id])
@@ -384,7 +375,6 @@ class DumpPosition(Keyword):
         self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
         self.precision = None
 
-        # TODO check if grouping method is too large or if grouping method exists. Same for ID
         options = list()
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
@@ -525,7 +515,6 @@ class Compute(Keyword):
         super().__init__('compute')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
-        # TODO add grouping_method check
         self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
         args = [self.grouping_method, self.sample_interval, self.output_interval]
 
@@ -714,7 +703,6 @@ class ComputeGKMA(Keyword):
         super().__init__('compute_gkma')
         self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
         self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
-        # TODO check that last_mode < 3*num_atoms
         self.last_mode = cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
 
         if bin_option == 'bin_size':
@@ -764,7 +752,6 @@ class ComputeHNEMA(Keyword):
         self.driving_force_z = assign_number(driving_force_z, 'driving_force_z')
 
         self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
-        # TODO check that last_mode < 3*num_atoms
         self.last_mode = cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
 
         if bin_option == 'bin_size':

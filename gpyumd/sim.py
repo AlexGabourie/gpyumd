@@ -2,7 +2,7 @@ __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 import operator as op
-from gpyumd.keyword import TimeStep
+from gpyumd.keyword import TimeStep, Ensemble, Keyword
 from gpyumd.util import cond_assign_int
 from gpyumd.atoms import GpumdAtoms
 
@@ -31,7 +31,7 @@ class Simulation:
         pass
 
     def add_run(self):
-
+        # TODO propagate time step - Add a time step as a simulation parameter?
         pass
 
 
@@ -57,14 +57,19 @@ class Run:
         # TODO add variables that track if there is an ensemble defined or an immediate action
         pass
 
-    # TODO handle propagating keywords
-    # TODO Coupling time for NVT, NPT, and heat must all follow tau/(time step) >= 1
     # TODO check nyquist frequency for a run (DOS)
     # TODO make sure that there is an NVT or NPT set for compute_hnemd (not langevin)
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
-    # TODO ensure that minimize comes after the potentials have been defined
+    # TODO check that last_mode < 3*num_atoms for hnema and gkma
 
-    def add_keyword(self, keyword):
+    def add_keyword(self, keyword, final_check=False):
+        self.validate_keyword(keyword, final_check)
+        self.keywords[keyword.keyword] = keyword
+
+    def validate_keyword(self, keyword, final_check=False):
+        if not issubclass(type(keyword), Keyword):
+            raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")
+
         # check for all grouped keywords except 'fix'
         if keyword.grouping_method is not None and (self.atoms.num_group_methods - 1) < keyword.grouping_method:
             raise ValueError(f"The selected grouping method for {keyword.keyword} is larger than the number of grouping"
@@ -82,12 +87,11 @@ class Run:
             if keyword.group_id >= self.atoms.groups[0].num_groups:
                 raise ValueError(f"The group_id given for {keyword.keyword} is too large for grouping method 0.")
 
-        # TODO double check this at the end
         # Check for heating ensembles
         if keyword.keyword == 'ensemble':
             if 'ensemble' in self.keywords.keys():
-                # TODO make replace ensemble?
-                raise ValueError(f"The 'ensemble' keyword has already been used in this run.")
+                print(f"The 'ensemble' keyword has already been used in this run. Previous ensemble will be "
+                      f"overwritten.")
 
             if not keyword.ensemble.parameters_set:
                 raise ValueError(f"Cannot add an ensemble before its parameters are set. "
@@ -118,5 +122,18 @@ class Run:
                     if any([not bc for bc in self.atoms.get_pbc()]):
                         raise ValueError("Cannot use isotropic pressure with non-periodic boundary in any direction.")
 
-        # TODO add a function that checks the tau-timestep relationship for the ensemble, this can be re-run when needed
-        self.keywords[keyword.keyword] = keyword
+        if (keyword.keyword == 'compute_hnemd' or keyword.keyword == 'compute_hnema') and final_check:
+            # TODO may not need this check if we do it elsewhere
+            if 'ensemble' not in self.keywords.keys():
+                raise ValueError(f"The {keyword.keyword} keyword requires an NVT or NPT ensemble be defined.")
+
+            ensemble = self.keywords['ensemble']
+            if 'lan' in ensemble.ensemble_method:
+                raise ValueError("Langevin thermostat not allowed for the 'compute_hnemd' keyword.")
+            if not (isinstance(type(ensemble.ensemble), type(Ensemble.NPT)) or
+                    isinstance(type(ensemble.ensemble), type(Ensemble.NVT()))):
+                raise ValueError(f"An NVT or NPT ensemble is needed for the {keyword.keyword} keyword.")
+
+    def validate_run(self):
+        # iterate over all keywords and check for validity
+        pass
