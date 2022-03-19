@@ -770,20 +770,20 @@ class ComputeHNEMA(Keyword):
                         self.first_mode, self.last_mode, self.bin_option, self.size])
 
 
-# class Run(Keyword):
-#
-#     def __init__(self, number_of_steps):
-#         """
-#         Run a number of steps according to the settings specified for the current run.
-#
-#         https://gpumd.zheyongfan.org/index.php/The_run_keyword
-#
-#         Args:
-#             number_of_steps (int): Number of steps to run.
-#         """
-#         super().__init__('run', take_immediate_action=True)
-#         self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
-#         self._set_args([self.number_of_steps])
+class RunKeyword(Keyword):
+
+    def __init__(self, number_of_steps):
+        """
+        Run a number of steps according to the settings specified for the current run.
+
+        https://gpumd.zheyongfan.org/index.php/The_run_keyword
+
+        Args:
+            number_of_steps (int): Number of steps to run.
+        """
+        super().__init__('run', take_immediate_action=True)
+        self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
+        self._set_args([self.number_of_steps])
 
 
 class Minimize(Keyword):
