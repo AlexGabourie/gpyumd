@@ -56,19 +56,39 @@ class Run:
         self.time_step = TimeStep(dt_in_fs=dt_in_fs)
         self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
         # TODO add variables that track if there is an ensemble defined or an immediate action
-        pass
+        self.accepting_immediate_actions = True
 
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
-    # TODO check that last_mode < 3*num_atoms for hnema and gkma
+    # TODO Velocity command may be required
 
     def add_keyword(self, keyword, final_check=False):
+        """
+        Adds a keyword object to the run. Verifies that the keyword is valid (to the extent that it can be initially).
+
+        Args:
+            keyword: Keyword
+                The keyword to add to the run.
+
+            final_check: bool
+                Use only if you know what you're doing. It is normally used to validate the run when finalized.
+
+        Returns:
+
+        """
+        if not issubclass(type(keyword), Keyword):
+            raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")
+
+        if keyword.keyword in ['compute_cohesive', 'compute_elastic', 'compute_phonon', 'minimize']:
+            if len(self.keywords) > 0:
+                print("Keywords that run immediately must be in their own run.")
+                return
+            else:
+                self.accepting_immediate_actions = False
+
         self.validate_keyword(keyword, final_check)
         self.keywords[keyword.keyword] = keyword
 
     def validate_keyword(self, keyword, final_check=False):
-        if not issubclass(type(keyword), Keyword):
-            raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")
-
         # check for all grouped keywords except 'fix'
         if keyword.grouping_method is not None and (self.atoms.num_group_methods - 1) < keyword.grouping_method:
             raise ValueError(f"The selected grouping method for {keyword.keyword} is larger than the number of grouping"
@@ -122,7 +142,7 @@ class Run:
                         raise ValueError("Cannot use isotropic pressure with non-periodic boundary in any direction.")
 
         if (keyword.keyword == 'compute_hnemd' or keyword.keyword == 'compute_hnema') and final_check:
-            # TODO may not need this check if we do it elsewhere
+            # FIXME may not need this check if we do it elsewhere
             if 'ensemble' not in self.keywords.keys():
                 raise ValueError(f"The {keyword.keyword} keyword requires an NVT or NPT ensemble be defined.")
 
@@ -137,6 +157,11 @@ class Run:
             if 1e3 / (self.time_step.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
                 raise ValueError("Sampling rate is less than the Nyquist rate.")
 
+        if keyword.keyword in ['compute_hnema', 'compute_gkma']:
+            if keyword.last_mode > 3 * len(self.atoms):
+                raise ValueError(f"Last mode for {keyword.keyword} keyword must be no greater than "
+                                 f"3*(number of atoms).")
+
     def validate_run(self):
-        # iterate over all keywords and check for validity
-        pass
+        for key in self.keywords.keys():
+            self.validate_keyword(self.keywords[key], final_check=True)
