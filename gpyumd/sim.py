@@ -1,6 +1,7 @@
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
+import math
 import operator as op
 from gpyumd.keyword import TimeStep, Ensemble, Keyword
 from gpyumd.util import cond_assign_int
@@ -57,8 +58,6 @@ class Run:
         # TODO add variables that track if there is an ensemble defined or an immediate action
         pass
 
-    # TODO check nyquist frequency for a run (DOS)
-    # TODO make sure that there is an NVT or NPT set for compute_hnemd (not langevin)
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
     # TODO check that last_mode < 3*num_atoms for hnema and gkma
 
@@ -133,6 +132,10 @@ class Run:
             if not (isinstance(type(ensemble.ensemble), type(Ensemble.NPT)) or
                     isinstance(type(ensemble.ensemble), type(Ensemble.NVT()))):
                 raise ValueError(f"An NVT or NPT ensemble is needed for the {keyword.keyword} keyword.")
+
+        if keyword.keyword == 'compute_dos' and final_check:
+            if 1e3 / (self.time_step.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
+                raise ValueError("Sampling rate is less than the Nyquist rate.")
 
     def validate_run(self):
         # iterate over all keywords and check for validity
