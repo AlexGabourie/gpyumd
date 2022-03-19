@@ -2,16 +2,13 @@ __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 import math
-import operator as op
+from ase import Atoms
 from gpyumd.keyword import TimeStep, Ensemble, Keyword, RunKeyword
-from gpyumd.util import cond_assign_int
 from gpyumd.atoms import GpumdAtoms
+from gpyumd.util import create_directory
 
 
 class Simulation:
-    """
-    Stores the relevant information for a full 'gpumd' executable simulation.
-    """
 
     # TODO Add runs
     # TODO add attach xyz file
@@ -19,9 +16,20 @@ class Simulation:
     # TODO add working directory
 
     def __init__(self, atoms, directory='.'):
-        self.directory = directory
+        """
+        Stores the relevant information for a full 'gpumd' executable simulation.
+
+        Args:
+            atoms: GpumdAtoms (or ase.Atoms)
+                Final structure to be used with the GPUMD simulation.
+            directory: string
+                Directory of the simulation.
+        """
+        self.directory = create_directory(directory)
         self.runs = list()
-        self.atoms = atoms
+        if not isinstance(atoms, Atoms) or not isinstance(atoms, GpumdAtoms):
+            raise ValueError("The 'atoms' parameter must be of ase.Atoms or GpumdAtoms type.")
+        self.atoms = GpumdAtoms(atoms)
         self.potentials = list()
 
     def create_simulation(self):

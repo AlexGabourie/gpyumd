@@ -82,6 +82,11 @@ def get_direction(directions):
     return sorted(list(set(directions)))
 
 
+def create_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+
 def get_path(directory, filename):
     if not directory:
         return os.path.join(os.getcwd(), filename)
