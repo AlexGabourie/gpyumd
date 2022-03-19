@@ -3,7 +3,7 @@ __email__ = "agabourie47@gmail.com"
 
 import math
 from ase import Atoms
-from gpyumd.keyword import TimeStep, Ensemble, Keyword, RunKeyword
+from gpyumd.keyword import Ensemble, Keyword, RunKeyword
 from gpyumd.atoms import GpumdAtoms
 from gpyumd.util import create_directory
 
@@ -37,12 +37,29 @@ class Simulation:
         Generates the required files for the gpumd simulation
         :return:
         """
-        pass
+        self.validate_simulation()
+        # TODO set all of the output files
 
-    def add_run(self, dt_in_fs=None, number_of_steps=None):
-        self.runs.append(Run(self.atoms, dt_in_fs=dt_in_fs, number_of_steps=number_of_steps))
-        # TODO propagate time step - Add a time step as a simulation parameter?
-        pass
+    def add_run(self, number_of_steps=None):
+        """
+        Adds a new run to a simulation.
+
+        Args:
+            number_of_steps:
+
+        Returns:
+            A reference to the new run in the simulation.
+        """
+        # initialize new runs here to ensure that the same atoms object is used.
+        current_run = Run(self.atoms, number_of_steps=number_of_steps)
+        self.runs.append(current_run)
+
+        # Propagate time steps
+        dt_in_fs = None
+        if len(self.runs) > 2:
+            dt_in_fs = self.runs[-2].get_dt_in_fs()
+        self.runs[-1].set_dt_in_fs(dt_in_fs)
+        return current_run
 
     def validate_simulation(self):
         first_run_checked = False
@@ -54,24 +71,25 @@ class Simulation:
             run.validate_run()
 
 
+# TODO enable atoms to be updated and then have all the runs be re-validated
+# TODO when outputting text for a Run, ensure that the timestep is skipped if there is an immediate action
+# TODO also make sure to skip the runkeyword if there is an immediate action
 class Run:
 
-    def __init__(self, gpumd_atoms, dt_in_fs=None, number_of_steps=None):
+    def __init__(self, gpumd_atoms, number_of_steps=None):
         """
 
         Args:
             gpumd_atoms: GpumdAtoms
 
-            dt_in_fs: float
-                Time step of simulation in fs. Default is 1 fs.
+            number_of_steps: int
+                Number of steps to be run in the Run. (Not used if the run is an immediate action)
         """
         if not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("gpumd_atoms must be of the GpumdAtoms type.")
         self.atoms = gpumd_atoms
         self.keywords = dict()
-        if not dt_in_fs:
-            dt_in_fs = 1
-        self.time_step = TimeStep(dt_in_fs=dt_in_fs)
+        self.dt_in_fs = None
         self.run_keyword = None
         if number_of_steps:
             self.run_keyword = RunKeyword(number_of_steps=number_of_steps)
@@ -81,6 +99,14 @@ class Run:
 
     def set_first_run(self, first_run=True):
         self.first_run = first_run
+
+    def set_dt_in_fs(self, dt_in_fs=None):
+        if not dt_in_fs:
+            dt_in_fs = 1  # 1 fs default
+        self.dt_in_fs = dt_in_fs
+
+    def get_dt_in_fs(self):
+        return self.dt_in_fs
 
     def get_immediate_action(self):
         return self.immediate_action
@@ -119,6 +145,11 @@ class Run:
         self.accepting_immediate_actions = False
 
     def validate_keyword(self, keyword, final_check=False):
+        if keyword.keyword == 'time_step':
+            if 'time_step' in self.keywords:
+                print("Warning: only one 'time_step' allowed per Run. Previous will be overwritten.")
+            self.dt_in_fs = keyword.dt_in_fs  # update for propagation
+
         if keyword.keyword == 'run' and self.run_keyword:
             print("Warning: Only one 'run' keyword allowed per Run. Previous will be overwritten.")
 
@@ -193,7 +224,7 @@ class Run:
                     raise ValueError(f"An NVT or NPT ensemble is needed for the {keyword.keyword} keyword.")
 
             if keyword.keyword == 'compute_dos':
-                if 1e3 / (self.time_step.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
+                if 1e3 / (self.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
                     raise ValueError("Sampling rate is less than the Nyquist rate.")
 
             if  keyword.keyword == 'run' and not self.immediate_action:
