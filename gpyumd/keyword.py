@@ -26,9 +26,11 @@ class Keyword:
         self.grouping_method = None
         self.group_id = None
 
-    def get_command(self):
-        # TODO add a universal "to string" command
-        pass
+    def get_entry(self):
+        entry = f"{self.keyword} "
+        entry += " ".join([f"{arg}" for arg in self.required_args]) + " "
+        if self.optional_args:
+            entry += " ".join([f"{arg}" for arg in self.optional_args])
 
     def _set_args(self, required_args, optional_args=None):
         """
