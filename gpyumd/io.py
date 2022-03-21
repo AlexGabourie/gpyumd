@@ -358,6 +358,7 @@ def lammps_atoms_to_gpumd(filename, max_neighbors, cutoff, style='atomic', gpumd
     atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file=gpumd_file)
 
 
+# FIXME Remove once merged with GpumdAtoms
 # TODO update with ase.atoms velocities
 def atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file='xyz.in', sort_key=None,
                     order=None, group_index=None):

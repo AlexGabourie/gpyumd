@@ -113,6 +113,57 @@ class GpumdAtoms(Atoms):
         _, _, _, a1, a2, a3 = tuple(self.cell.cellpar())
         self.triclinic = False if a1 == a2 == a3 == 90 else True
 
+    @ staticmethod
+    def __atom_type_sortkey(atom, order):
+        """
+        Used as a key for sorting atom type
+
+        Args:
+            atom (ase.Atom):
+                Atom object
+        """
+        for i, sym in enumerate(order):
+            if sym == atom.symbol:
+                return i
+    def __update_atoms(self, atoms_list):
+        """
+        Helper for sort_atoms.
+
+        Args:
+            atoms_list: List of Atom objects
+
+        Returns:
+            None
+        """
+        symbols = list()
+        positions = np.zeros((len(atoms_list), 3))
+        tags = list()
+        momentum = np.zeros(positions.shape)
+        mass = list()
+        magmom = list()
+        charge = list()
+        # Get lists of properties of atoms in new order
+        for atom_idx, atom in enumerate(atoms_list):
+            symbols.append(atom.symbol)
+            positions[atom_idx, :] = atom.position
+            tags.append(atom.tag)
+            momentum[atom_idx, :] = atom.momentum
+            mass.append(atom.mass)
+            magmom.append(atom.magmom)
+            charge.append(atom.charge)
+        # Make a new Atoms object keeping all system properties as before, but with new atom order
+        super().__init__(symbols, positions, tags=tags, momenta=momentum, masses=mass, magmoms=magmom, charges=charge,
+                         cell=self.get_cell(),
+                         pbc=self.get_pbc(),
+                         celldisp=self.get_celldisp(),
+                         constraint=self.constraints(),
+                         calculator=self.get_calculator(),
+                         info=self.info,
+                         velocities=self.get_velocities())
+        for group in self.groups:
+            group.update()
+
+
     def add_group_method(self, group):
         self.groups.append(group)
         self.num_group_methods += 1
