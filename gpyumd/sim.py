@@ -1,19 +1,19 @@
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
+import copy
 import math
+import os
 from ase import Atoms
-from gpyumd.keyword import Ensemble, Keyword, RunKeyword
 from gpyumd.atoms import GpumdAtoms
+from gpyumd.keyword import Ensemble, Keyword, RunKeyword
 from gpyumd.util import create_directory
 
 
+# TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
 
-    # TODO Add runs
-    # TODO add attach xyz file
     # TODO add potentials --> not to be used as a standard keyword
-    # TODO add working directory
 
     def __init__(self, atoms, directory='.'):
         """
@@ -32,13 +32,20 @@ class Simulation:
         self.atoms = GpumdAtoms(atoms)
         self.potentials = list()
 
-    def create_simulation(self):
+    def create_simulation(self, copy_potentials=False):
         """
         Generates the required files for the gpumd simulation
         :return:
         """
-        self.validate_simulation()
-        # TODO set all of the output files
+        self.validate_runs()
+        with open(os.path.join(self.directory, 'run.in'), 'w') as runfile:
+            # TODO write potentials
+            for run in self.runs:
+                runlines = run.get_output()
+                for line in runlines:
+                    runfile.write(f"{line}\n")
+        # TODO write xyz.in
+        # TODO copy potentials (if selected)
 
     def add_run(self, number_of_steps=None):
         """
@@ -61,7 +68,7 @@ class Simulation:
         self.runs[-1].set_dt_in_fs(dt_in_fs)
         return current_run
 
-    def validate_simulation(self):
+    def validate_runs(self):
         first_run_checked = False
         for run in self.runs:
             if not run.get_immediate_action() and not first_run_checked:  # denotes first run
@@ -72,8 +79,6 @@ class Simulation:
 
 
 # TODO enable atoms to be updated and then have all the runs be re-validated
-# TODO when outputting text for a Run, ensure that the timestep is skipped if there is an immediate action
-# TODO also make sure to skip the runkeyword if there is an immediate action
 class Run:
 
     def __init__(self, gpumd_atoms, number_of_steps=None):
@@ -97,6 +102,20 @@ class Run:
         self.immediate_action = False
         self.first_run = False
 
+    def get_output(self):
+        keywords = copy.deepcopy(self.keywords)
+        output = list()
+        if 'time_step' in keywords:
+            keyword = keywords.pop('time_step', None)
+            output.append(keyword.get_entry())
+        for key in keywords:
+            keyword = keywords.pop(key, None)
+            output.append(keyword.get_entry())
+
+        if not self.immediate_action:
+            output.append(self.run_keyword.get_entry())
+        return output
+
     def set_first_run(self, first_run=True):
         self.first_run = first_run
 
@@ -112,7 +131,6 @@ class Run:
         return self.immediate_action
 
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
-
     def add_keyword(self, keyword, final_check=False):
         """
         Adds a keyword object to the run. Verifies that the keyword is valid (to the extent that it can be initially).
