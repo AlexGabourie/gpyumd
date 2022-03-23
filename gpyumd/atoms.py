@@ -119,12 +119,33 @@ class GpumdAtoms(Atoms):
         Used as a key for sorting atom type
 
         Args:
-            atom (ase.Atom):
+            atom: ase.Atom
                 Atom object
         """
         for i, sym in enumerate(order):
             if sym == atom.symbol:
                 return i
+
+    @staticmethod
+    def __atom_group_sortkey(atom, group, order):
+        """
+        Used as a key for sorting atom groups for GPUMD in.xyz files
+
+        Args:
+            atom: ase.Atom
+                Atom object
+
+            group: list of ints
+                Store the group information of each atom (1-to-1 correspondence)
+
+            order: list of ints
+                A list of ints in desired order for groups at group_index
+
+        """
+        for i, curr_group in enumerate(order):
+            if curr_group == group[atom.index]:
+                return i
+
     def __update_atoms(self, atoms_list):
         """
         Helper for sort_atoms.
