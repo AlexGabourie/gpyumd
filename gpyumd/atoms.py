@@ -177,13 +177,52 @@ class GpumdAtoms(Atoms):
                          cell=self.get_cell(),
                          pbc=self.get_pbc(),
                          celldisp=self.get_celldisp(),
-                         constraint=self.constraints(),
+                         constraint=self.constraints,
                          calculator=self.get_calculator(),
-                         info=self.info,
-                         velocities=self.get_velocities())
+                         info=self.info)
+
+        # Do not add this to ase.Atoms. Already stored as momenta. ASE does not allow both anyways.
+        # velocities=self.get_velocities()
+
         for group in self.groups:
             group.update()
 
+    def sort_atoms(self, sort_key=None, order=None, group_method=None):
+        """
+
+        Args:
+            sort_key: string
+                How to sort atoms ('group', 'type').
+            order: list of strings or list of ints
+                For sort_key=='type', a list of atomic symbol strings in the desired order. Ex: ["Mo", "S", "Si", "O"]
+                For sort_key=='group', a list of ints in desired order for groups at group_index. Ex: [1,3,2,4]
+            group_method: int
+                Selects the group to sort in the output.
+        Returns:
+
+        """
+        if not sort_key and not order and not group_method:
+            print("Warning: No sorting parameters passed. Nothing has been changed.")
+            return
+
+        if sort_key == 'type':
+            if not order:
+                raise ValueError("Sorting by type requires the 'order' parameter.")
+            self.__update_atoms(sorted(self, key=lambda atom: self.__atom_type_sortkey(atom, order)))
+        elif sort_key == 'group':
+            if not order or group_method:
+                raise ValueError("Sorting by group requires the 'order' and 'group_method' parameters.")
+            if group_method >= self.num_group_methods:
+                raise ValueError("The group_method parameter is greater than the number of grouping methods assigned.")
+            if not (sorted(order) == list(range(self.groups[group_method].num_groups))):
+                raise ValueError("Not all groups are accounted for.")
+            self.__update_atoms(sorted(self, key=lambda atom: self.__atom_group_sortkey(atom,
+                                                                                        self.groups[group_method].group,
+                                                                                        order)))
+        elif sort_key is not None:
+            print("Invalid sort_key. No sorting is done.")
+
+        return
 
     def add_group_method(self, group):
         self.groups.append(group)
