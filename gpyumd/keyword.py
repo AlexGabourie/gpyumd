@@ -284,21 +284,18 @@ class Ensemble(Keyword):
                     self.source_group_id, self.sink_group_id]
 
 
-class Neighbor(Keyword):
+class NeighborOff(Keyword):
 
-    def __init__(self, skin_distance=1):
+    def __init__(self):
         """
-        Tells the code that the neighbor list should be updated on a specific run.
+        Tells GPUMD to not update the neighbor list during simulations. Should only be used when there is no atom
+        diffusion in the simulation.
 
         https://gpumd.zheyongfan.org/index.php/The_neighbor_keyword
 
-        Args:
-            skin_distance (float): Difference between the cutoff distance for the neighbor list construction and force
-                                   evaluation.
         """
         super().__init__('neighbor')
-        self.skin_distance = cond_assign(skin_distance, 0, op.gt, 'skin_distance')
-        self._set_args([self.skin_distance])
+        self._set_args(['off'])
 
 
 class Fix(Keyword):
