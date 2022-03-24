@@ -2,6 +2,7 @@ from ase.io import write
 from ase.io import read
 from ase import Atom, Atoms
 import numpy as np
+from gpyumd.atoms import GpumdAtoms
 import sys
 
 __author__ = "Alexander Gabourie"
@@ -160,6 +161,33 @@ def load_movie_xyz(filename='movie.xyz', in_file=None, atom_types=None):
 #########################################
 # Write Related
 #########################################
+
+def write_gpumd(gpumd_atoms, max_neighbors, cutoff, has_velocity=False, gpumd_file='xyz.in', directory='.'):
+    """
+    Creates and xyz.in file.
+
+    Args:
+        gpumd_atoms: GpumdAtoms
+            The structure to write to file.
+
+        max_neighbors: int
+            Maximum number of neighbors for one atom
+
+        cutoff: float
+            Initial cutoff distance for building the neighbor list
+
+        has_velocity: boolean
+            Whether or not to set the velocities in the xyz.in file.
+
+        gpumd_file: string
+            File to save the structure data to
+
+        directory: string
+            Directory to store output
+    """
+    if not (isinstance(gpumd_atoms, GpumdAtoms)):
+        raise ValueError("GpumdAtoms object is required to write an xyz.in file.")
+    gpumd_atoms.write_gpumd(max_neighbors, cutoff, has_velocity, gpumd_file, directory)
 
 
 # TODO merge into atoms
