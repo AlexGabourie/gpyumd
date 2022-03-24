@@ -35,79 +35,6 @@ def __set_atoms(atoms, types):
 # Read Related
 #########################################
 
-# TODO update with ase.atoms velocities
-def load_xyz_in(filename='xyz.in', atom_types=None):
-    """
-    Reads and returns the structure input file from GPUMD.
-
-    Args:
-        filename (str):
-            Name of structure file
-
-        atom_types (list(str)):
-            List of atom types (elements).
-
-    Returns:
-        tuple: atoms, max_neighbors, cutoff
-
-    atoms (ase.Atoms):
-    ASE atoms object with x,y,z, mass, group, type, cell, and PBCs
-    from input file. group is stored in tag, atom type may not
-    correspond to correct atomic symbol
-
-    max_neighbors (int):
-    Max number of neighbor atoms
-
-    cutoff (float):
-    Initial cutoff for neighbor list build
-    """
-    # read file
-    with open(filename) as f:
-        xyz_lines = f.readlines()
-
-    # get global structure params
-    l1 = tuple(xyz_lines[0].split())  # first line
-    num_atoms, max_neighbors, use_triclinic, has_velocity, num_of_groups = [int(val) for val in l1[:2] + l1[3:]]
-    cutoff = float(l1[2])
-    l2 = tuple(xyz_lines[1].split())  # second line
-    if use_triclinic:
-        pbc, cell = [int(val) for val in l2[:3]], [float(val) for val in l2[3:]]
-    else:
-        pbc, length_xyz = [int(val) for val in l2[:3]], [float(val) for val in l2[3:]]
-
-    # get atomic params
-    info = dict()
-    atoms = Atoms()
-    atoms.set_pbc((pbc[0], pbc[1], pbc[2]))
-    if use_triclinic:
-        atoms.set_cell(np.array(cell).reshape((3, 3)))
-    else:
-        atoms.set_cell([(length_xyz[0], 0, 0), (0, length_xyz[1], 0), (0, 0, length_xyz[2])])
-
-    for index, line in enumerate(xyz_lines[2:]):
-        data = dict()
-        lc = tuple(line.split())  # current line
-        type_, mass = int(lc[0]), float(lc[4])
-        position = [float(val) for val in lc[1:4]]
-        atom = Atom(type_, position, mass=mass)
-        lc = lc[5:]  # reduce list length for easier indexing
-        if has_velocity:
-            velocity = [float(val) for val in lc[:3]]
-            lc = lc[3:]
-            data['velocity'] = velocity
-        if num_of_groups:
-            groups = [int(group) for group in lc]
-            data['groups'] = groups
-        atoms.append(atom)
-        info[index] = data
-
-    atoms.info = info
-    if atom_types:
-        __set_atoms(atoms, atom_types)
-
-    return atoms, max_neighbors, cutoff
-
-
 def __process_header(atoms, sim, box):
     sim = sim.split()
     box = box.split()
@@ -317,6 +244,7 @@ def create_basis(atoms):
         file.write(out)
 
 
+# TODO perhaps remove --> leave this to a user
 def convert_gpumd_atoms(in_file='xyz.in', out_filename='in.xyz', output_format='xyz', atom_types=None):
     """
     Converts the GPUMD input structure file to any compatible ASE
@@ -341,6 +269,7 @@ def convert_gpumd_atoms(in_file='xyz.in', out_filename='in.xyz', output_format='
     write(out_filename, atoms, output_format)
 
 
+# TODO perhaps remove --> leave this to a user
 def lammps_atoms_to_gpumd(filename, max_neighbors, cutoff, style='atomic', gpumd_file='xyz.in'):
     """
     Converts a lammps data file to GPUMD compatible position file.
