@@ -1,7 +1,7 @@
 import numpy as np
 from ase import Atoms
 from abc import ABC, abstractmethod
-from gpyumd.util import check_list, check_range
+from gpyumd.util import check_list, check_range, get_path
 from numpy import prod
 
 __author__ = "Alexander Gabourie"
@@ -265,7 +265,8 @@ class GpumdAtoms(Atoms):
             summary += f"{lx} {ly} {lz}"
 
         # write structure
-        with open(gpumd_file, 'w') as f:
+        filename = get_path(directory, gpumd_file)
+        with open(filename, 'w') as f:
             f.writelines(summary)
             for atom in self:
                 pos = atom.position
@@ -274,7 +275,7 @@ class GpumdAtoms(Atoms):
                     vel = [p/atom.mass for p in atom.momentum]
                     line += f"{vel[0]} {vel[1]} {vel[2]} "
                 for group in self.groups:
-                    line += f"{group[atom.index]} "
+                    line += f"{group.group[atom.index]} "
                 f.writelines(line)
         return
 
