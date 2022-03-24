@@ -3,6 +3,7 @@ from ase.io import read
 from ase import Atom, Atoms
 import numpy as np
 from gpyumd.atoms import GpumdAtoms
+from gpyumd.util import get_path
 import sys
 
 __author__ = "Alexander Gabourie"
@@ -105,6 +106,78 @@ def load_xyz_in(filename='xyz.in', atom_types=None):
         __set_atoms(atoms, atom_types)
 
     return atoms, max_neighbors, cutoff
+
+
+def __process_header(atoms, sim, box):
+    sim = sim.split()
+    box = box.split()
+
+    num_atoms = int(sim[0])
+    max_neighbors = int(sim[1])
+    cutoff = float(sim[2])
+    atoms.triclinic = bool(sim[3])
+    has_velocity = bool(sim[4])
+    num_group_methods = int(sim[5])
+    for group_num in range(num_group_methods):
+        atoms.add_group_method(GpumdAtoms.GroupGeneric(np.zeros(num_atoms,dtype=int)))
+
+    atoms.set_pbc([bool(pbc) for pbc in box[:3]])
+    if atoms.triclinic:
+        atoms.set_cell(np.array([float(component) for component in box[3:]]).reshape((3, 3)))
+    else:
+        lx, ly, lz = tuple(float(side_length) for side_length in box[3:])
+        atoms.set_cell([[lx, 0, 0], [0, ly, 0], [0, lz, 0]])
+
+    return max_neighbors, cutoff, has_velocity
+
+
+def __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_velocity):
+    atom_line = atom_line.split()
+    type_ = atom_symbols[int(atom_line[0])] if atom_symbols else int(atom_line[0])
+    position = [float(val) for val in atom_line[1:4]]
+    mass = float(atom_line[4])
+    momentum = None
+    atom_line = atom_line[5:]  # reduce list length for easier indexing
+    if has_velocity:
+        momentum = [float(val) * mass for val in atom_line[:3]]
+        atom_line = atom_line[3:]
+    atom = Atom(type_, position, mass=mass, momentum=momentum)
+    gpumd_atoms.append(atom)
+
+    if gpumd_atoms.num_group_methods:
+        groups = [int(group) for group in atom_line]
+        for group_method in range(len(groups)):
+            gpumd_atoms.group_methods[group_method].groups[atom_index] = groups[group_method]
+
+
+def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
+    """
+    Reads and returns the structure input file from GPUMD.
+
+    Args:
+        atom_symbols: list of strings or ints
+            List of atom symbols/atomic number used in the xyz.in file. Ex: ['Mo', 'S', 'Si', 'O'].
+            Uses GPUMD type directly, if not provided.
+
+        gpumd_file: string
+            Name of structure file
+
+        directory: string
+            Directory of output
+
+    Returns:
+        tuple: GpumdAtoms, max_neighbors, cutoff
+    """
+    filename = get_path(directory, gpumd_file)
+    with open(filename) as f:
+        xyz_lines = f.readlines()
+
+    gpumd_atoms = GpumdAtoms()
+    max_neighbors, cutoff, has_velocity = __process_header(gpumd_atoms, xyz_lines[0], xyz_lines[1])
+    for atom_index, atom_line in enumerate(xyz_lines[2:]):
+        __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_velocity)
+
+    return gpumd_atoms, max_neighbors, cutoff
 
 
 def load_movie_xyz(filename='movie.xyz', in_file=None, atom_types=None):
