@@ -14,27 +14,6 @@ __email__ = "agabourie47@gmail.com"
 # Helper Functions
 #########################################
 
-def __set_atoms(atoms, types):
-    """
-    Sets the atom symbols for atoms loaded from GPUMD where xyz.in does not
-    contain that information
-
-    Args:
-        atoms (ase.Atoms):
-            Atoms object to change symbols in
-
-        types (list(str)):
-            List of strings to assign to atomic symbols
-
-    """
-    for atom in atoms:
-        atom.symbol = types[atom.number]
-
-
-#########################################
-# Read Related
-#########################################
-
 def __process_header(atoms, sim, box):
     sim = sim.split()
     box = box.split()
@@ -75,6 +54,10 @@ def __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_v
         groups = [int(group) for group in atom_line]
         for group_method in range(len(groups)):
             gpumd_atoms.group_methods[group_method].groups[atom_index] = groups[group_method]
+
+#########################################
+# Read Related
+#########################################
 
 
 def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
