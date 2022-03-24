@@ -103,7 +103,7 @@ class GpumdAtoms(Atoms):
         """
         super().__init__(symbols, positions, numbers, tags, momenta, masses, magmoms, charges, scaled_positions, cell,
                          pbc, celldisp, constraint, calculator, info, velocities)
-        self.groups = list()  # A list of grouping methods
+        self.group_methods = list()  # A list of grouping methods
         self.num_group_methods = 0
 
         # only used for setting up phonon calculations
@@ -146,16 +146,21 @@ class GpumdAtoms(Atoms):
             if curr_group == group[atom.index]:
                 return i
 
-    def __update_atoms(self, atoms_list):
+    def __update_atoms(self, atom_order):
         """
         Helper for sort_atoms.
 
         Args:
-            atoms_list: List of Atom objects
+            atom_order: List of ints
+                New atom order based on sorting
 
         Returns:
             None
         """
+        atoms_list = list()
+        for index in atom_order:
+            atoms_list.append(self[index])
+
         symbols = list()
         positions = np.zeros((len(atoms_list), 3))
         tags = list()
@@ -184,7 +189,8 @@ class GpumdAtoms(Atoms):
         # Do not add this to ase.Atoms. Already stored as momenta. ASE does not allow both anyways.
         # velocities=self.get_velocities()
 
-        for group in self.groups:
+        # update groups
+        for group in self.group_methods:
             group.update(self)
 
     def sort_atoms(self, sort_key=None, order=None, group_method=None):
@@ -205,20 +211,22 @@ class GpumdAtoms(Atoms):
             print("Warning: No sorting parameters passed. Nothing has been changed.")
             return
 
+        index_range = range(len(self))
         if sort_key == 'type':
             if not order:
                 raise ValueError("Sorting by type requires the 'order' parameter.")
-            self.__update_atoms(sorted(self, key=lambda atom: self.__atom_type_sortkey(atom, order)))
+            self.__update_atoms(sorted(index_range,
+                                       key=lambda atom_idx: self.__atom_type_sortkey(self[atom_idx], order)))
         elif sort_key == 'group':
             if not order or group_method:
                 raise ValueError("Sorting by group requires the 'order' and 'group_method' parameters.")
             if group_method >= self.num_group_methods:
                 raise ValueError("The group_method parameter is greater than the number of grouping methods assigned.")
-            if not (sorted(order) == list(range(self.groups[group_method].num_groups))):
+            if not (sorted(order) == list(range(self.group_methods[group_method].num_groups))):
                 raise ValueError("Not all groups are accounted for.")
-            self.__update_atoms(sorted(self, key=lambda atom: self.__atom_group_sortkey(atom,
-                                                                                        self.groups[group_method].group,
-                                                                                        order)))
+            self.__update_atoms(sorted(index_range, key=lambda atom_idx:
+                                self.__atom_group_sortkey(self[atom_idx],
+                                                          self.group_methods[group_method].groups, order)))
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
@@ -274,13 +282,13 @@ class GpumdAtoms(Atoms):
                 if has_velocity:
                     vel = [p/atom.mass for p in atom.momentum]
                     line += f"{vel[0]} {vel[1]} {vel[2]} "
-                for group in self.groups:
-                    line += f"{group.group[atom.index]} "
+                for group in self.group_methods:
+                    line += f"{group.groups[atom.index]} "
                 f.writelines(line)
         return
 
     def add_group_method(self, group):
-        self.groups.append(group)
+        self.group_methods.append(group)
         self.num_group_methods += 1
         return self.num_group_methods - 1
 
@@ -342,14 +350,38 @@ class GpumdAtoms(Atoms):
             """
             Stores grouping information for a GpumdAtoms object
             """
-            self.group = None
+            self.groups = None
             self.num_groups = None
             self.group_type = group_type
             self.counts = None
 
         @abstractmethod
-        def update(self, atoms):
+        def update(self, atoms, order=None):
             pass
+
+    class GroupGeneric(GroupMethod):
+
+        def __init__(self, groups):
+            """
+            Grouping with no specific guidelines. Mostly used for loaded xyz.in files.
+            """
+            super().__init__(group_type='generic')
+            self.num_groups = len(set(groups))
+            if not (sorted(set(groups)) == list(range(self.num_groups))):
+                raise ValueError("Groups are not contiguous.")
+            self.counts = np.zeros(self.num_groups, dtype=int)
+            for group in groups:
+                self.counts[group] += 1
+            self.groups = groups
+
+        def update(self, atoms, order=None):
+            if not order:
+                raise ValueError("Generic groups are only updated with new atom ordering. "
+                                 "The 'order' parameter is required.")
+            new_groups = list()
+            for index in order:
+                new_groups.append(self.groups[index])
+            self.groups = new_groups
 
     class GroupByType(GroupMethod):
 
@@ -359,13 +391,13 @@ class GpumdAtoms(Atoms):
             self.num_groups = len(set(types.values()))
             self.counts = np.zeros(self.num_groups, dtype=int)
 
-        def update(self, atoms):
+        def update(self, atoms, order=None):
             num_atoms = len(atoms)
-            self.group = np.full(num_atoms, -1, dtype=int)
+            self.groups = np.full(num_atoms, -1, dtype=int)
             for index, atom in enumerate(atoms):
                 atom_group = self.types[atom.symbol]
                 self.counts[atom_group] += 1
-                self.group[index] = atom_group
+                self.groups[index] = atom_group
 
     class GroupByPosition(GroupMethod):
 
@@ -376,12 +408,12 @@ class GpumdAtoms(Atoms):
             self.num_groups = len(split) - 1
             self.counts = np.zeros(self.num_groups, dtype=int)
 
-        def update(self, atoms):
+        def update(self, atoms, order=None):
             num_atoms = len(atoms)
-            self.group = np.full(num_atoms, -1, dtype=int)
+            self.groups = np.full(num_atoms, -1, dtype=int)
             for index, atom in enumerate(atoms):
                 atom_group = self.get_group(atom.position)
-                self.group[index] = atom_group
+                self.groups[index] = atom_group
                 self.counts[atom_group] += 1
 
         def get_group(self, position):

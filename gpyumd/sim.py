@@ -178,14 +178,14 @@ class Run:
 
         # check for all grouped keywords except 'fix' and 'compute'
         if keyword.grouping_method is not None and keyword.group_id is not None:
-            if keyword.group_id >= self.atoms.groups[keyword.grouping_method].num_groups:
+            if keyword.group_id >= self.atoms.group_methods[keyword.grouping_method].num_groups:
                 raise ValueError(f"The group_id listed for {keyword.keyword} is too large for the grouping method "
                                  f"{keyword.grouping_method}.")
 
         if keyword.keyword == 'fix':
             if self.atoms.num_group_methods == 0:
                 raise ValueError(f"At least one grouping method is required for the {keyword.keyword} keyword.")
-            if keyword.group_id >= self.atoms.groups[0].num_groups:
+            if keyword.group_id >= self.atoms.group_methods[0].num_groups:
                 raise ValueError(f"The group_id given for {keyword.keyword} is too large for grouping method 0.")
 
         # Check for heating ensembles
@@ -203,8 +203,8 @@ class Run:
                     raise ValueError(f"At least one grouping method is required for the {keyword.keyword} "
                                      f"{keyword.ensemble_method} keyword.")
 
-                if self.atoms.groups[0].num_groups <= keyword.ensemble.source_group_id or \
-                        self.atoms.groups[0].num_groups <= keyword.ensemble.sink_group_id:
+                if self.atoms.group_methods[0].num_groups <= keyword.ensemble.source_group_id or \
+                        self.atoms.group_methods[0].num_groups <= keyword.ensemble.sink_group_id:
                     raise ValueError(f"The source or sink group is too large for grouping method 0.")
 
             if keyword.ensemble_type == 'npt':
