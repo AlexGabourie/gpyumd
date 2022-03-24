@@ -113,7 +113,7 @@ class GpumdAtoms(Atoms):
         _, _, _, a1, a2, a3 = tuple(self.cell.cellpar())
         self.triclinic = False if a1 == a2 == a3 == 90 else True
 
-    @ staticmethod
+    @staticmethod
     def __atom_type_sortkey(atom, order):
         """
         Used as a key for sorting atom type
@@ -185,7 +185,7 @@ class GpumdAtoms(Atoms):
         # velocities=self.get_velocities()
 
         for group in self.groups:
-            group.update()
+            group.update(self)
 
     def sort_atoms(self, sort_key=None, order=None, group_method=None):
         """
@@ -222,6 +222,60 @@ class GpumdAtoms(Atoms):
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
+        return
+
+    # TODO add ability to customize which species goes with each type
+    def write_gpumd(self, max_neighbors, cutoff, has_velocity=False, gpumd_file='xyz.in', directory='.'):
+        """
+        Creates and xyz.in file.
+
+        Args:
+            max_neighbors (int):
+                Maximum number of neighbors for one atom
+
+            cutoff (float):
+                Initial cutoff distance for building the neighbor list
+
+            has_velocity: boolean
+                Whether or not to set the velocities in the xyz.in file.
+
+            gpumd_file (str):
+                File to save the structure data to
+
+            directory: string
+                Directory to store output
+
+        """
+        # Assign type IDs
+        type_dict = dict()
+        for i, type_ in enumerate(list(set(self.get_chemical_symbols()))):
+            type_dict[type_] = i
+
+        # Create first two lines
+        pbc = self.get_pbc()
+        lx, ly, lz, a1, a2, a3 = tuple(self.cell.cellpar())
+        summary = f"{len(self)} {max_neighbors} {cutoff} {int(self.triclinic)} " \
+                  f"{int(has_velocity)} {self.num_group_methods}\n" \
+                  f"{int(pbc[0])} {int(pbc[1])} {int(pbc[2])} "
+
+        if self.triclinic:
+            for component in self.get_cell().flatten():
+                summary += f"{component} "
+        else:
+            summary += f"{lx} {ly} {lz}"
+
+        # write structure
+        with open(gpumd_file, 'w') as f:
+            f.writelines(summary)
+            for atom in self:
+                pos = atom.position
+                line = f"\n{type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass} "
+                if has_velocity:
+                    vel = [p/atom.mass for p in atom.momentum]
+                    line += f"{vel[0]} {vel[1]} {vel[2]} "
+                for group in self.groups:
+                    line += f"{group[atom.index]} "
+                f.writelines(line)
         return
 
     def add_group_method(self, group):
@@ -383,7 +437,7 @@ class GpumdAtoms(Atoms):
             raise ValueError("The 'split' parameter must be greater than length 1.")
 
         # check for ascending or descending
-        if not all([split[i+1] > split[i] for i in range(splitlen-1)]):
+        if not all([split[i + 1] > split[i] for i in range(splitlen - 1)]):
             raise ValueError("The 'split' parameter must be ascending.")
 
         group = self.GroupByPosition(split, direction)
@@ -419,8 +473,3 @@ class GpumdAtoms(Atoms):
         group.update(self)
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
-
-
-
-
-
