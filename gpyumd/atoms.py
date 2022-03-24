@@ -146,7 +146,7 @@ class GpumdAtoms(Atoms):
             if curr_group == group[atom.index]:
                 return i
 
-    def __update_atoms(self, atom_order):
+    def __enforce_sort(self, atom_order):
         """
         Helper for sort_atoms.
 
@@ -155,12 +155,25 @@ class GpumdAtoms(Atoms):
                 New atom order based on sorting
 
         Returns:
-            None
+
         """
         atoms_list = list()
         for index in atom_order:
             atoms_list.append(self[index])
+        self.__update_atoms(atoms_list)
 
+        # update groups
+        for group in self.group_methods:
+            group.update(self)
+
+    def __update_atoms(self, atoms_list):
+        """
+        Args:
+            atoms_list: List of Atoms
+
+        Returns:
+            None
+        """
         symbols = list()
         positions = np.zeros((len(atoms_list), 3))
         tags = list()
@@ -189,10 +202,6 @@ class GpumdAtoms(Atoms):
         # Do not add this to ase.Atoms. Already stored as momenta. ASE does not allow both anyways.
         # velocities=self.get_velocities()
 
-        # update groups
-        for group in self.group_methods:
-            group.update(self)
-
     def sort_atoms(self, sort_key=None, order=None, group_method=None):
         """
 
@@ -215,7 +224,7 @@ class GpumdAtoms(Atoms):
         if sort_key == 'type':
             if not order:
                 raise ValueError("Sorting by type requires the 'order' parameter.")
-            self.__update_atoms(sorted(index_range,
+            self.__enforce_sort(sorted(index_range,
                                        key=lambda atom_idx: self.__atom_type_sortkey(self[atom_idx], order)))
         elif sort_key == 'group':
             if not order or group_method:
@@ -224,9 +233,9 @@ class GpumdAtoms(Atoms):
                 raise ValueError("The group_method parameter is greater than the number of grouping methods assigned.")
             if not (sorted(order) == list(range(self.group_methods[group_method].num_groups))):
                 raise ValueError("Not all groups are accounted for.")
-            self.__update_atoms(sorted(index_range, key=lambda atom_idx:
-                                self.__atom_group_sortkey(self[atom_idx],
-                                                          self.group_methods[group_method].groups, order)))
+            self.__enforce_sort(sorted(index_range, key=lambda atom_idx:
+                               self.__atom_group_sortkey(self[atom_idx],
+                                      self.group_methods[group_method].groups, order)))
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
@@ -280,7 +289,7 @@ class GpumdAtoms(Atoms):
                 pos = atom.position
                 line = f"\n{type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass} "
                 if has_velocity:
-                    vel = [p/atom.mass for p in atom.momentum]
+                    vel = [p / atom.mass for p in atom.momentum]
                     line += f"{vel[0]} {vel[1]} {vel[2]} "
                 for group in self.group_methods:
                     line += f"{group.groups[atom.index]} "
