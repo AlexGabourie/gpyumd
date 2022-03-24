@@ -12,48 +12,6 @@ __email__ = "agabourie47@gmail.com"
 # Helper Functions
 #########################################
 
-# TODO update with ase.atoms velocities
-def __get_atom_line(atom, velocity, groups, type_dict, info):
-    """
-    Constructs an atom's line in an xyz.in file.
-
-    Args:
-        atom (ase.Atom):
-            Atom object to write to file.
-
-        velocity (bool):
-            If velocities need to be added.
-
-        groups (bool):
-            If the groups need to be added.
-
-        type_dict (dict):
-            Dictionary to convert symbol to type number.
-
-        info (dict):
-            Dictionary that stores all velocity, and groups data.
-
-    Returns:
-        str:
-            The line to be printed to file.
-    """
-    optional = ''
-    if info:
-        try:
-            option = info[atom.index]
-            if velocity:
-                optional += ' ' + ' '.join([str(val) for val in option['velocity']])
-            if groups:
-                optional += ' ' + ' '.join([str(val) for val in option['groups']])
-        except KeyError:
-            pass
-    required = ' '.join([str(type_dict[atom.symbol])] +
-                        [str(val) for val in list(atom.position)] +
-                        [str(atom.mass)])
-
-    return required + optional
-
-
 def __set_atoms(atoms, types):
     """
     Sets the atom symbols for atoms loaded from GPUMD where xyz.in does not
@@ -69,58 +27,6 @@ def __set_atoms(atoms, types):
     """
     for atom in atoms:
         atom.symbol = types[atom.number]
-
-
-def __atom_type_sortkey(atom, order=None):
-    """
-    Used as a key for sorting atom type for GPUMD in.xyz files
-
-    Args:
-        atom (ase.Atom):
-            Atom object
-
-        order (list(str)):
-            A list of atomic symbol strings in the desired order.
-
-    """
-    if order:
-        for i, sym in enumerate(order):
-            if sym == atom.symbol:
-                return i
-    else:
-        ValueError('type sortkey error: Missing order.')
-
-
-def __atom_group_sortkey(atom, info=None, group_index=None, order=None):
-    """
-    Used as a key for sorting atom groups for GPUMD in.xyz files
-
-    Args:
-        atom (ase.Atom):
-            Atom object
-
-        info (dict):
-            Info dictionary for Atoms object that 'atom' belongs to. Stores velocity,
-            groups information
-
-        group_index (int):
-            Index of the grouping list that is part of the 'groups' key for the atom.index
-            element from the info dictionary.
-
-        order (list(int)):
-            A list of ints in desired order for groups at group_index
-
-    """
-    if not (info and not group_index is None):
-        ValueError('group sortkey error: Missing either info or group_index.')
-
-    if order:
-        for i, group in enumerate(order):
-            if group == info[atom.index]['groups'][group_index]:
-                return i
-    else:
-        return info[atom.index]['groups'][group_index]
-    return sys.maxsize
 
 
 #########################################
@@ -256,6 +162,7 @@ def load_movie_xyz(filename='movie.xyz', in_file=None, atom_types=None):
 #########################################
 
 
+# TODO merge into atoms
 def create_kpoints(atoms, path='G', npoints=1, special_points=None):
     """
      Creates the file "kpoints.in", which specifies the kpoints needed for src/phonon
@@ -288,6 +195,7 @@ def create_kpoints(atoms, path='G', npoints=1, special_points=None):
     return path.get_linear_kpoint_axis()
 
 
+# TODO merge into atoms
 def create_basis(atoms):
     """
     Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
@@ -356,98 +264,3 @@ def lammps_atoms_to_gpumd(filename, max_neighbors, cutoff, style='atomic', gpumd
     # Load atoms
     atoms = read(filename, format='lammps-data', style=style)
     atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file=gpumd_file)
-
-
-# FIXME Remove once merged with GpumdAtoms
-# TODO update with ase.atoms velocities
-def atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file='xyz.in', sort_key=None,
-                    order=None, group_index=None):
-    """
-    Converts ASE atoms to GPUMD compatible position file.
-
-    Args:
-        atoms (ase.Atoms):
-            Atoms to write to gpumd file
-
-        max_neighbors (int):
-            Maximum number of neighbors for one atom
-
-        cutoff (float):
-            Initial cutoff distance for building the neighbor list
-
-        gpumd_file (str):
-            File to save the structure data to
-
-        sort_key (str):
-            How to sort atoms ('group', 'type').
-
-        order (list(type)):
-            List to sort by. Provide str for 'type', and int for 'group'
-
-        group_index (int):
-            Selects the group to sort in the output.
-
-    """
-
-    info = atoms.info  # info dictionary that stores velocities, groups
-    # sort atoms by desired property
-    if sort_key == 'type':
-        atoms_list = sorted(atoms, key=lambda x: __atom_type_sortkey(x, order))
-    elif sort_key == 'group':
-        atoms_list = sorted(atoms, key=lambda x: __atom_group_sortkey(x, info, group_index, order))
-    else:
-        atoms_list = atoms
-
-    # set order of types
-    if sort_key == 'type' and order:
-        types = order
-    else:
-        types = list(set(atoms.get_chemical_symbols()))
-
-    type_dict = dict()
-    for i, type_ in enumerate(types):
-        type_dict[type_] = i
-
-    # assume info[0] has same keys and number of groups as all other indices
-    num_groups = 0
-    if info and (0 in info):
-        infokeys = list(info[0])
-        velocity = 'velocity' in infokeys
-        if 'groups' in infokeys:
-            groups = True
-            num_groups = str(len(info[0]['groups']))
-        else:
-            groups = False
-    else:
-        velocity = 0
-        groups = 0
-
-    # prepare cell to write
-    num_atoms = len(atoms)
-    pbc = [str(1) if val else str(0) for val in atoms.get_pbc()]
-    lx, ly, lz, a1, a2, a3 = tuple(atoms.cell.cellpar())
-    summary = ' '.join([str(num_atoms), str(max_neighbors), str(cutoff), '@',
-                        '1' if velocity else '0',
-                        num_groups if groups else '0', '\n'])
-
-    # if orthorhombic
-    if a1 == a2 == a3 == 90:
-        summary = summary.replace('@', '0')
-        lx, ly, lz = str(lx), str(ly), str(lz)
-        summary += ' '.join(pbc + [lx, ly, lz] + ['\n'])
-    else:  # if triclinic
-        summary = summary.replace('@', '1')
-        cell_str_vec = [str(val) for val in atoms.get_cell().flatten()]
-        summary += ' '.join(pbc + cell_str_vec + ['\n'])
-
-    # write structure
-    with open(gpumd_file, 'w') as f:
-        f.writelines(summary)
-        for atom in atoms_list[:-1]:
-            line = __get_atom_line(atom, velocity, groups, type_dict, info)
-            f.writelines(line + '\n')
-        # Last line
-        atom = atoms_list[-1]
-        line = __get_atom_line(atom, velocity, groups, type_dict, info)
-        f.writelines(line)
-    return
