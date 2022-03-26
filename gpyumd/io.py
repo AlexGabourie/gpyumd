@@ -122,7 +122,7 @@ def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
             positions[index, 0] = float(x)
             positions[index, 1] = float(y)
             positions[index, 2] = float(z)
-            if block == 0:
+            if block == 0:  # Order of atoms is the same for every frame in GPUMD
                 symbols.append(atom_symbols[int(gpumd_type)] if atom_symbols else int(gpumd_type))
         trajectory.append(Atoms(symbols=symbols, positions=positions))
     return trajectory
