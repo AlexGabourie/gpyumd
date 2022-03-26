@@ -515,3 +515,36 @@ class GpumdAtoms(Atoms):
         group.update(self)
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
+
+    def write_kpoints(self, path='G', npoints=1, special_points=None, filename='kpoints.in', directory='.'):
+        """
+         Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
+
+        Args:
+            path: str
+                String of special point names defining the path, e.g. 'GXL'
+
+            npoints: int
+                Number of points in total.  Note that at least one point
+                is added for each special point in the path
+
+            special_points: dict
+                Dictionary mapping special points to scaled kpoint coordinates.
+                For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
+
+            filename: string
+                File to save the structure data to
+
+            directory: string
+                Directory to store output
+
+        Returns:
+            kpoints converted to x-coordinates, x-coordinates of the high symmetry points, labels of those points.
+        """
+        tol = 1e-15
+        path = self.cell.bandpath(path, npoints, special_points=special_points)
+        b = self.get_reciprocal_cell() * 2 * np.pi  # Reciprocal lattice vectors
+        gpumd_kpts = np.matmul(path.kpts, b)
+        gpumd_kpts[np.abs(gpumd_kpts) < tol] = 0.0
+        np.savetxt(get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
+        return path.get_linear_kpoint_axis()

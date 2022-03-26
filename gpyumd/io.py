@@ -160,37 +160,37 @@ def write_gpumd(gpumd_atoms, max_neighbors, cutoff, has_velocity=False, gpumd_fi
     gpumd_atoms.write_gpumd(max_neighbors, cutoff, has_velocity, gpumd_file, directory)
 
 
-# TODO merge into atoms
-def create_kpoints(atoms, path='G', npoints=1, special_points=None):
+def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filename='kpoints.in', directory='.'):
     """
-     Creates the file "kpoints.in", which specifies the kpoints needed for src/phonon
+     Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
 
     Args:
-        atoms (ase.Atoms):
+        gpumd_atoms: GpumdAtoms
             Unit cell to use for phonon calculation
 
-        path (str):
+        path: str
             String of special point names defining the path, e.g. 'GXL'
 
-        npoints (int):
+        npoints: int
             Number of points in total.  Note that at least one point
             is added for each special point in the path
 
-        special_points (dict):
+        special_points: dict
             Dictionary mapping special points to scaled kpoint coordinates.
             For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
 
+        filename: string
+            File to save the structure data to
+
+        directory: string
+            Directory to store output
+
     Returns:
-        tuple: First element is the kpoints converted to x-coordinates, second the x-coordinates of the high symmetry
-        points, and third the labels of those points.
+        kpoints converted to x-coordinates, x-coordinates of the high symmetry points, labels of those points.
     """
-    tol = 1e-15
-    path = atoms.cell.bandpath(path, npoints, special_points=special_points)
-    b = atoms.get_reciprocal_cell() * 2 * np.pi  # Reciprocal lattice vectors
-    gpumd_kpts = np.matmul(path.kpts, b)
-    gpumd_kpts[np.abs(gpumd_kpts) < tol] = 0.0
-    np.savetxt('kpoints.in', gpumd_kpts, header=str(npoints), comments='', fmt='%g')
-    return path.get_linear_kpoint_axis()
+    if not (isinstance(gpumd_atoms, GpumdAtoms)):
+        raise ValueError("GpumdAtoms object is required to write a kpoints.in file.")
+    return gpumd_atoms.write_kpoints(path, npoints, special_points, filename, directory)
 
 
 # TODO merge into atoms
