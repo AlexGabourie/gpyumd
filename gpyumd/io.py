@@ -193,25 +193,24 @@ def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filena
     return gpumd_atoms.write_kpoints(path, npoints, special_points, filename, directory)
 
 
-# TODO merge into atoms
-def create_basis(atoms):
+def write_basis(gpumd_atoms, filename='basis.in', directory='.'):
     """
     Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
-    Related: preproc.add_basis, preproc.repeat
+    Related: atoms.add_basis, atoms.repeat
 
     Args:
-        atoms (ase.Atoms):
+        gpumd_atoms: GpumdAtoms
             Atoms of unit cell used to generate basis.in
+
+        filename: string
+            File to save the structure data to
+
+        directory: string
+            Directory to store output
     """
-    out = '{}\n'.format(len(atoms.info['unitcell']))
-    masses = atoms.get_masses()
-    info = atoms.info
-    for i in info['unitcell']:
-        out += '{} {}\n'.format(i, masses[i])
-    for i in range(atoms.get_global_number_of_atoms()):
-        out += '{}\n'.format(info[i]['basis'])
-    with open("basis.in", 'w') as file:
-        file.write(out)
+    if not (isinstance(gpumd_atoms, GpumdAtoms)):
+        raise ValueError("GpumdAtoms object is required to write a basis.in file.")
+    gpumd_atoms.write_basis(filename, directory)
 
 
 # TODO perhaps remove --> leave this to a user

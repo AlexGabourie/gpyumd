@@ -549,3 +549,26 @@ class GpumdAtoms(Atoms):
         gpumd_kpts[np.abs(gpumd_kpts) < tol] = 0.0
         np.savetxt(get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
         return path.get_linear_kpoint_axis()
+
+    def write_basis(self, filename='basis.in', directory='.'):
+        """
+        Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
+        Related: atoms.add_basis, atoms.repeat
+
+        Args:
+            filename: string
+                File to save the structure data to
+
+            directory: string
+                Directory to store output
+        """
+        if self.unitcell is None or self.basis is None:
+            raise ValueError("Both the unit cell and basis must be defined to write the basis.in file. "
+                             "See the 'add_basis' function.")
+        masses = self.get_masses()
+        with open(get_path(directory, filename), 'w') as f:
+            f.writelines(f"{len(self.unitcell)}\n")
+            for basis_id in self.unitcell:
+                f.writelines(f"{basis_id} {masses[basis_id]}\n")
+            for atom_basis in self.basis:
+                f.writelines(f"{atom_basis}\n")
