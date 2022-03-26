@@ -108,33 +108,24 @@ def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
     Returns:
         List of GpumdAtoms
     """
+    with open(get_path(directory, filename), 'r') as f:
+        lines = f.readlines()  # FIXME make memory efficient
+
+    block_size = int(lines[0]) + 2
+    num_blocks = len(lines) // block_size
     trajectory = list()
-    filepath = get_path(directory, filename)
-    with open(filepath, 'r') as movie_file:
-        num_atoms = 0
-        for line_number, line in enumerate(movie_file):
-            if line_number == 0:
-                num_atoms = int(line)
-            else:
-                break
-        positions = list()
-        symbols = list()
-        frame_size = num_atoms + 2
-        counter = 0
-        for line in movie_file:
-            if counter < num_atoms:
-                atom_data = line.split()[:4]
-                symbols.append(atom_symbols[int(atom_data[0])] if atom_symbols else int(atom_data[0]))
-                positions.append([float(pos) for pos in atom_data[1:]])
-            elif counter == frame_size - 1:
-                counter = 0
-                trajectory.append(Atoms(symbols=symbols, positions=positions))
-                positions = list()
-                symbols = list()
-                continue
-            counter += 1
+    symbols = list()
+    positions = np.zeros((block_size-2, 3))
+    for block in range(num_blocks):
+        for index, entry in enumerate(lines[block_size*block+2:block_size*(block+1)]):
+            gpumd_type, x, y, z = entry.split()[:4]
+            positions[index, 0] = float(x)
+            positions[index, 1] = float(y)
+            positions[index, 2] = float(z)
+            if block == 0:
+                symbols.append(atom_symbols[int(gpumd_type)] if atom_symbols else int(gpumd_type))
         trajectory.append(Atoms(symbols=symbols, positions=positions))
-        return trajectory
+    return trajectory
 
 
 #########################################
