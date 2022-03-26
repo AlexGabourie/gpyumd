@@ -1,6 +1,3 @@
-__author__ = "Alexander Gabourie"
-__email__ = "agabourie47@gmail.com"
-
 import copy
 import math
 import os
@@ -9,27 +6,31 @@ from gpyumd.atoms import GpumdAtoms
 from gpyumd.keyword import Ensemble, Keyword, RunKeyword
 from gpyumd.util import create_directory
 
+__author__ = "Alexander Gabourie"
+__email__ = "agabourie47@gmail.com"
+
 
 # TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
 
     # TODO add potentials --> not to be used as a standard keyword
 
-    def __init__(self, atoms, directory='.'):
+    def __init__(self, gpumd_atoms, directory='.'):
         """
         Stores the relevant information for a full 'gpumd' executable simulation.
 
         Args:
-            atoms: GpumdAtoms (or ase.Atoms)
+            gpumd_atoms: GpumdAtoms (or ase.Atoms)
                 Final structure to be used with the GPUMD simulation.
             directory: string
                 Directory of the simulation.
         """
         self.directory = create_directory(directory)
         self.runs = list()
-        if not isinstance(atoms, Atoms) or not isinstance(atoms, GpumdAtoms):
+        self.static_calc = None
+        if not isinstance(gpumd_atoms, Atoms) or not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("The 'atoms' parameter must be of ase.Atoms or GpumdAtoms type.")
-        self.atoms = GpumdAtoms(atoms)
+        self.atoms = GpumdAtoms(gpumd_atoms)
         self.potentials = list()
 
     def create_simulation(self, copy_potentials=False):
@@ -40,11 +41,18 @@ class Simulation:
         self.validate_runs()
         with open(os.path.join(self.directory, 'run.in'), 'w') as runfile:
             # TODO write potentials
+            if self.static_calc:
+                static_calc_lines = self.static_calc.get_output()
+                for line in static_calc_lines:
+                    runfile.write(f"{line}\n")
             for run in self.runs:
                 runlines = run.get_output()
                 for line in runlines:
                     runfile.write(f"{line}\n")
-        # TODO write xyz.in
+
+        # Write atoms
+        # self.atoms.write_gpumd()
+
         # TODO copy potentials (if selected)
 
     def add_run(self, number_of_steps=None):
@@ -71,14 +79,48 @@ class Simulation:
     def validate_runs(self):
         first_run_checked = False
         for run in self.runs:
-            if not run.get_immediate_action() and not first_run_checked:  # denotes first run
+            if not first_run_checked:  # denotes first run
                 run.set_first_run()
                 first_run_checked = False
             # TODO add try/catch here?
             run.validate_run()
 
+    def add_static_calc(self, keyword):
+        if not self.static_calc:
+            self.static_calc = StaticCalc()
+        self.static_calc.add_calc(keyword)
+
+
+class StaticCalc:
+
+    def __init__(self):
+        """
+        Stores the list of static calculation keywords used in the run.in file. These keywords come after potential, but
+        before the runs.
+        """
+        self.keywords = dict()
+
+    def add_calc(self, keyword):
+        if not issubclass(type(keyword), Keyword):
+            raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")
+        if keyword.keyword not in ['compute_cohesive', 'compute_elastic', 'compute_phonon', 'minimize']:
+            raise ValueError("Only 'compute_cohesive', 'compute_elastic', 'compute_phonon', 'minimize' keywords "
+                             "are allowed.")
+        self.keywords[keyword.keyword] = keyword
+
+    def get_output(self, minimize_first=True):
+        keywords = copy.deepcopy(self.keywords)
+        output = list()
+        if minimize_first and 'minimize' in keywords:
+            keyword = keywords.pop('minimize', None)
+            output.append(keyword.get_entry())
+        for key in keywords:
+            keyword = keywords.pop(key, None)
+            output.append(keyword.get_entry())
+
 
 # TODO enable atoms to be updated and then have all the runs be re-validated
+# TODO enable multiple static computations in a single run
 class Run:
 
     def __init__(self, gpumd_atoms, number_of_steps=None):
@@ -88,7 +130,7 @@ class Run:
             gpumd_atoms: GpumdAtoms
 
             number_of_steps: int
-                Number of steps to be run in the Run. (Not used if the run is an immediate action)
+                Number of steps to be run in the Run.
         """
         if not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("gpumd_atoms must be of the GpumdAtoms type.")
@@ -98,8 +140,6 @@ class Run:
         self.run_keyword = None
         if number_of_steps:
             self.run_keyword = RunKeyword(number_of_steps=number_of_steps)
-        self.accepting_immediate_actions = True
-        self.immediate_action = False
         self.first_run = False
 
     def get_output(self):
@@ -112,10 +152,6 @@ class Run:
             keyword = keywords.pop(key, None)
             output.append(keyword.get_entry())
 
-        if not self.immediate_action:
-            output.append(self.run_keyword.get_entry())
-        return output
-
     def set_first_run(self, first_run=True):
         self.first_run = first_run
 
@@ -126,9 +162,6 @@ class Run:
 
     def get_dt_in_fs(self):
         return self.dt_in_fs
-
-    def get_immediate_action(self):
-        return self.immediate_action
 
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
     def add_keyword(self, keyword, final_check=False):
@@ -148,19 +181,13 @@ class Run:
         if not issubclass(type(keyword), Keyword):
             raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")
 
-        if keyword.keyword in ['compute_cohesive', 'compute_elastic', 'compute_phonon', 'minimize']:
-            if not self.accepting_immediate_actions:
-                print(f"Keywords that run immediately must be in their own run. {keyword.keyword} will not be added to "
-                      f"this Run")
-                return
-            else:
-                self.immediate_action = True
+        # Do not allow static calculations except minimize
+        if keyword.keyword in ['compute_cohesive', 'compute_elastic', 'compute_phonon']:
+            print(f"The {keyword.keyword} keyword is not allowed in a run. It is a static calculation.\n")
+            return
 
         self.validate_keyword(keyword, final_check)
         self.keywords[keyword.keyword] = keyword
-
-        # Immediate actions not allowed after the first keyword in a run
-        self.accepting_immediate_actions = False
 
     def validate_keyword(self, keyword, final_check=False):
         if keyword.keyword == 'time_step':
@@ -169,7 +196,8 @@ class Run:
             self.dt_in_fs = keyword.dt_in_fs  # update for propagation
 
         if keyword.keyword == 'run' and self.run_keyword:
-            print("Warning: Only one 'run' keyword allowed per Run. Previous will be overwritten.")
+            print("Warning: Only one 'run' keyword allowed per Run. "
+                  "If adding this keyword, the previous will be overwritten.")
 
         # check for all grouped keywords except 'fix'
         if keyword.grouping_method is not None and (self.atoms.num_group_methods - 1) < keyword.grouping_method:
@@ -245,12 +273,12 @@ class Run:
                 if 1e3 / (self.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
                     raise ValueError("Sampling rate is less than the Nyquist rate.")
 
-            if  keyword.keyword == 'run' and not self.immediate_action:
-                raise ValueError(f"No 'run' keyword provided for this run.")
-
     def validate_run(self):
         for key in self.keywords.keys():
             self.validate_keyword(self.keywords[key], final_check=True)
+
+        if 'run' not in self.keywords:
+            raise ValueError(f"No 'run' keyword provided for this run.")
 
         if self.first_run and 'velocity' not in self.keywords:
             raise ValueError("A 'velocity' keyword must be used before any 'run' keyword. See "
