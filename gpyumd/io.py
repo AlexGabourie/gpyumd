@@ -78,8 +78,8 @@ def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
     Returns:
         tuple: GpumdAtoms, max_neighbors, cutoff
     """
-    filename = get_path(directory, gpumd_file)
-    with open(filename) as f:
+    filepath = get_path(directory, gpumd_file)
+    with open(filepath) as f:
         xyz_lines = f.readlines()
 
     gpumd_atoms = GpumdAtoms()
@@ -90,7 +90,7 @@ def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
     return gpumd_atoms, max_neighbors, cutoff
 
 
-def load_movie_xyz(filename='movie.xyz', in_file=None, atom_types=None):
+def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
     """
     Reads the trajectory from GPUMD run and creates a list of ASE atoms.
 
@@ -98,47 +98,43 @@ def load_movie_xyz(filename='movie.xyz', in_file=None, atom_types=None):
         filename (str):
             Name of the file that holds the GPUMD trajectory.
 
-        in_file (str):
-            Name of the original structure input file. Not required, but
-            can help load extra information not included in trajectory output.
+        directory: string
+            Directory of output. Assumes the in_file and movie.xyz file are in the same directory.
 
-        atom_types (list(str)):
-            List of atom types (elements).
+        atom_symbols: list of strings or ints
+            List of atom symbols/atomic number used in the xyz.in file. Ex: ['Mo', 'S', 'Si', 'O'].
+            Uses GPUMD type directly, if not provided.
 
     Returns:
-        list(ase.Atoms): A list of ASE atoms objects.
+        List of GpumdAtoms
     """
-    # get extra information about system if wanted
-    if in_file:
-        atoms, _, _ = load_xyz_in(in_file, atom_types)
-        pbc = atoms.get_pbc()
-    else:
-        pbc = None
-
-    with open(filename, 'r') as f:
-        xyz_line = f.readlines()
-
-        num_atoms = int(xyz_line[0])
-        block_size = num_atoms + 2
-        num_blocks = len(xyz_line) // block_size
-        traj = list()
-        for block in range(num_blocks):
-            types = []
-            positions = []
-            # TODO Loop may be inefficient in accessing xyz_line
-            for entry in xyz_line[block_size * block + 2:block_size * (block + 1)]:
-                # type_ can be an atom number or index to atom_types
-                type_, x, y, z = entry.split()[:4]
-                positions.append([float(x), float(y), float(z)])
-                if atom_types:
-                    types.append(atom_types[int(type_)])
-                else:
-                    types.append(int(type_))
-            if atom_types:
-                traj.append(Atoms(symbols=types, positions=positions, pbc=pbc))
+    trajectory = list()
+    filepath = get_path(directory, filename)
+    with open(filepath, 'r') as movie_file:
+        num_atoms = 0
+        for line_number, line in enumerate(movie_file):
+            if line_number == 0:
+                num_atoms = int(line)
             else:
-                traj.append(Atoms(numbers=types, positions=positions, pbc=pbc))
-        return traj
+                break
+        positions = list()
+        symbols = list()
+        frame_size = num_atoms + 2
+        counter = 0
+        for line in movie_file:
+            if counter < num_atoms:
+                atom_data = line.split()[:4]
+                symbols.append(atom_symbols[int(atom_data[0])] if atom_symbols else int(atom_data[0]))
+                positions.append([float(pos) for pos in atom_data[1:]])
+            elif counter == frame_size - 1:
+                counter = 0
+                trajectory.append(Atoms(symbols=symbols, positions=positions))
+                positions = list()
+                symbols = list()
+                continue
+            counter += 1
+        trajectory.append(Atoms(symbols=symbols, positions=positions))
+        return trajectory
 
 
 #########################################
