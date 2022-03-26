@@ -406,19 +406,19 @@ class GpumdAtoms(Atoms):
                 new_groups.append(self.groups[index])
             self.groups = new_groups
 
-    class GroupByType(GroupMethod):
+    class GroupBySymbol(GroupMethod):
 
-        def __init__(self, types):
+        def __init__(self, symbols):
             super().__init__(group_type='type')
-            self.types = types
-            self.num_groups = len(set(types.values()))
+            self.symbols = symbols
+            self.num_groups = len(set(symbols.values()))
             self.counts = np.zeros(self.num_groups, dtype=int)
 
         def update(self, atoms, order=None):
             num_atoms = len(atoms)
             self.groups = np.full(num_atoms, -1, dtype=int)
             for index, atom in enumerate(atoms):
-                atom_group = self.types[atom.symbol]
+                atom_group = self.symbols[atom.symbol]
                 self.counts[atom_group] += 1
                 self.groups[index] = atom_group
 
@@ -501,14 +501,14 @@ class GpumdAtoms(Atoms):
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
 
-    def group_by_type(self, types):
+    def group_by_type(self, symbols):
         """
-        Assigns groups to all atoms based on atom types. Returns a
+        Assigns groups to all atoms based on atom symbols. Returns a
         bookkeeping parameter, but atoms will be udated in-place.
 
         Args:
-            types (dict):
-                Dictionary with types for keys and group as a value.
+            symbols (dict):
+                Dictionary with symbols for keys and group as a value.
                 Only one group allowed per atom. Assumed groups are integers
                 starting at 0 and increasing in steps of 1. Ex. range(0,10).
 
@@ -518,14 +518,14 @@ class GpumdAtoms(Atoms):
 
         """
         # atom symbol checking
-        all_symbols = list(types)
+        all_symbols = list(symbols)
         # check that symbol set matches symbol set of atoms
         if set(self.get_chemical_symbols()) - set(all_symbols):
             raise ValueError('Group symbols do not match atoms symbols.')
         if not len(set(all_symbols)) == len(all_symbols):
-            raise ValueError('Group not assigned to all atom types.')
+            raise ValueError('Group not assigned to all atom symbols.')
 
-        group = self.GroupByType(types)
+        group = self.GroupBySymbol(symbols)
         group.update(self)
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
