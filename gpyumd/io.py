@@ -22,7 +22,7 @@ def __process_header(atoms, sim, box):
     has_velocity = bool(sim[4])
     num_group_methods = int(sim[5])
     for group_num in range(num_group_methods):
-        atoms.add_group_method(GpumdAtoms.GroupGeneric(np.zeros(num_atoms,dtype=int)))
+        atoms.add_group_method(GpumdAtoms.GroupGeneric(np.zeros(num_atoms, dtype=int)))
 
     atoms.set_pbc([bool(pbc) for pbc in box[:3]])
     if atoms.triclinic:
@@ -208,4 +208,3 @@ def write_basis(gpumd_atoms, filename='basis.in', directory='.'):
     if not (isinstance(gpumd_atoms, GpumdAtoms)):
         raise ValueError("GpumdAtoms object is required to write a basis.in file.")
     gpumd_atoms.write_basis(filename, directory)
-

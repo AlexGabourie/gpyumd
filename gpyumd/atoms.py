@@ -233,9 +233,11 @@ class GpumdAtoms(Atoms):
                 raise ValueError("The group_method parameter is greater than the number of grouping methods assigned.")
             if not (sorted(order) == list(range(self.group_methods[group_method].num_groups))):
                 raise ValueError("Not all groups are accounted for.")
-            self.__enforce_sort(sorted(index_range, key=lambda atom_idx:
-                               self.__atom_group_sortkey(self[atom_idx],
-                                      self.group_methods[group_method].groups, order)))
+            self.__enforce_sort(
+                sorted(index_range, key=lambda atom_idx: self.__atom_group_sortkey(self[atom_idx],
+                                                                                   self.group_methods[
+                                                                                       group_method].groups,
+                                                                                   order)))
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
@@ -547,6 +549,7 @@ class GpumdAtoms(Atoms):
         b = self.get_reciprocal_cell() * 2 * np.pi  # Reciprocal lattice vectors
         gpumd_kpts = np.matmul(path.kpts, b)
         gpumd_kpts[np.abs(gpumd_kpts) < tol] = 0.0
+        # noinspection PyTypeChecker
         np.savetxt(get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
         return path.get_linear_kpoint_axis()
 
