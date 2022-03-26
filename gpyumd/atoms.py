@@ -255,7 +255,7 @@ class GpumdAtoms(Atoms):
         return
 
     # TODO add ability to customize which species goes with each type
-    def write_gpumd(self, has_velocity=False, gpumd_file='xyz.in', directory='.'):
+    def write_gpumd(self, has_velocity=False, gpumd_file='xyz.in', directory=None):
         """
         Creates and xyz.in file.
 
@@ -530,7 +530,7 @@ class GpumdAtoms(Atoms):
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
 
-    def write_kpoints(self, path='G', npoints=1, special_points=None, filename='kpoints.in', directory='.'):
+    def write_kpoints(self, path='G', npoints=1, special_points=None, filename='kpoints.in', directory=None):
         """
          Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
 
@@ -564,7 +564,7 @@ class GpumdAtoms(Atoms):
         np.savetxt(get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
         return path.get_linear_kpoint_axis()
 
-    def write_basis(self, filename='basis.in', directory='.'):
+    def write_basis(self, filename='basis.in', directory=None):
         """
         Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
         Related: atoms.add_basis, atoms.repeat

@@ -57,7 +57,7 @@ def __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_v
 #########################################
 
 
-def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
+def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory=None):
     """
     Reads and returns the structure input file from GPUMD.
 
@@ -87,7 +87,7 @@ def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
     return gpumd_atoms
 
 
-def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
+def read_movie(filename='movie.xyz', directory=None, atom_symbols=None):
     """
     Reads the trajectory from GPUMD run and creates a list of ASE atoms.
 
@@ -129,7 +129,7 @@ def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
 # Write Related
 #########################################
 
-def write_gpumd(gpumd_atoms, has_velocity=False, gpumd_file='xyz.in', directory='.'):
+def write_gpumd(gpumd_atoms, has_velocity=False, gpumd_file='xyz.in', directory=None):
     """
     Creates and xyz.in file. Note: both max_neighbors and cutoff must be set for the file to be written.
 
@@ -151,7 +151,7 @@ def write_gpumd(gpumd_atoms, has_velocity=False, gpumd_file='xyz.in', directory=
     gpumd_atoms.write_gpumd(has_velocity, gpumd_file, directory)
 
 
-def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filename='kpoints.in', directory='.'):
+def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filename='kpoints.in', directory=None):
     """
      Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
 
@@ -184,7 +184,7 @@ def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filena
     return gpumd_atoms.write_kpoints(path, npoints, special_points, filename, directory)
 
 
-def write_basis(gpumd_atoms, filename='basis.in', directory='.'):
+def write_basis(gpumd_atoms, filename='basis.in', directory=None):
     """
     Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
     Related: atoms.add_basis, atoms.repeat

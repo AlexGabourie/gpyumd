@@ -4,7 +4,7 @@ import os
 from ase import Atoms
 from gpyumd.atoms import GpumdAtoms
 from gpyumd.keyword import Ensemble, Keyword, RunKeyword
-from gpyumd.util import create_directory
+from gpyumd.util import create_directory, get_path
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -15,7 +15,7 @@ class Simulation:
 
     # TODO add potentials --> not to be used as a standard keyword
 
-    def __init__(self, gpumd_atoms, directory='.'):
+    def __init__(self, gpumd_atoms, directory=None):
         """
         Stores the relevant information for a full 'gpumd' executable simulation.
 
@@ -25,7 +25,7 @@ class Simulation:
             directory: string
                 Directory of the simulation.
         """
-        self.directory = create_directory(directory)
+        self.directory = create_directory(directory) if directory else os.getcwd()
         self.runs = list()
         self.static_calc = None
         if not isinstance(gpumd_atoms, Atoms) or not isinstance(gpumd_atoms, GpumdAtoms):
@@ -50,9 +50,7 @@ class Simulation:
                 for line in runlines:
                     runfile.write(f"{line}\n")
 
-        # Write atoms
-        # self.atoms.write_gpumd()
-
+        self.atoms.write_gpumd()
         # TODO copy potentials (if selected)
 
     def add_run(self, number_of_steps=None):
