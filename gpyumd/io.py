@@ -16,8 +16,8 @@ def __process_header(atoms, sim, box):
     box = box.split()
 
     num_atoms = int(sim[0])
-    max_neighbors = int(sim[1])
-    cutoff = float(sim[2])
+    atoms.set_max_neighbors(int(sim[1]))
+    atoms.set_cutoff(float(sim[2]))
     atoms.triclinic = bool(sim[3])
     has_velocity = bool(sim[4])
     num_group_methods = int(sim[5])
@@ -31,7 +31,7 @@ def __process_header(atoms, sim, box):
         lx, ly, lz = tuple(float(side_length) for side_length in box[3:])
         atoms.set_cell([[lx, 0, 0], [0, ly, 0], [0, lz, 0]])
 
-    return max_neighbors, cutoff, has_velocity
+    return has_velocity
 
 
 def __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_velocity):
@@ -80,11 +80,11 @@ def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory='.'):
         xyz_lines = f.readlines()
 
     gpumd_atoms = GpumdAtoms()
-    max_neighbors, cutoff, has_velocity = __process_header(gpumd_atoms, xyz_lines[0], xyz_lines[1])
+    has_velocity = __process_header(gpumd_atoms, xyz_lines[0], xyz_lines[1])
     for atom_index, atom_line in enumerate(xyz_lines[2:]):
         __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_velocity)
 
-    return gpumd_atoms, max_neighbors, cutoff
+    return gpumd_atoms
 
 
 def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
@@ -129,19 +129,13 @@ def read_movie(filename='movie.xyz', directory='.', atom_symbols=None):
 # Write Related
 #########################################
 
-def write_gpumd(gpumd_atoms, max_neighbors, cutoff, has_velocity=False, gpumd_file='xyz.in', directory='.'):
+def write_gpumd(gpumd_atoms, has_velocity=False, gpumd_file='xyz.in', directory='.'):
     """
-    Creates and xyz.in file.
+    Creates and xyz.in file. Note: both max_neighbors and cutoff must be set for the file to be written.
 
     Args:
         gpumd_atoms: GpumdAtoms
             The structure to write to file.
-
-        max_neighbors: int
-            Maximum number of neighbors for one atom
-
-        cutoff: float
-            Initial cutoff distance for building the neighbor list
 
         has_velocity: boolean
             Whether or not to set the velocities in the xyz.in file.
@@ -154,7 +148,7 @@ def write_gpumd(gpumd_atoms, max_neighbors, cutoff, has_velocity=False, gpumd_fi
     """
     if not (isinstance(gpumd_atoms, GpumdAtoms)):
         raise ValueError("GpumdAtoms object is required to write an xyz.in file.")
-    gpumd_atoms.write_gpumd(max_neighbors, cutoff, has_velocity, gpumd_file, directory)
+    gpumd_atoms.write_gpumd(has_velocity, gpumd_file, directory)
 
 
 def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filename='kpoints.in', directory='.'):

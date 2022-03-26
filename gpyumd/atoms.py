@@ -1,7 +1,8 @@
+import operator as op
 import numpy as np
 from ase import Atoms
 from abc import ABC, abstractmethod
-from gpyumd.util import check_list, check_range, get_path
+from gpyumd.util import check_list, check_range, get_path, cond_assign_int, cond_assign
 from numpy import prod
 
 __author__ = "Alexander Gabourie"
@@ -112,6 +113,16 @@ class GpumdAtoms(Atoms):
 
         _, _, _, a1, a2, a3 = tuple(self.cell.cellpar())
         self.triclinic = False if a1 == a2 == a3 == 90 else True
+
+        # Needed for structure file
+        self.max_neighbors = None
+        self.cutoff = None
+
+    def set_max_neighbors(self, max_neighbors):
+        self.max_neighbors = cond_assign_int(max_neighbors, 1, op.ge, 'max_neighbors')
+
+    def set_cutoff(self, cutoff):
+        self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
 
     @staticmethod
     def __atom_type_sortkey(atom, order):
@@ -244,17 +255,11 @@ class GpumdAtoms(Atoms):
         return
 
     # TODO add ability to customize which species goes with each type
-    def write_gpumd(self, max_neighbors, cutoff, has_velocity=False, gpumd_file='xyz.in', directory='.'):
+    def write_gpumd(self, has_velocity=False, gpumd_file='xyz.in', directory='.'):
         """
         Creates and xyz.in file.
 
         Args:
-            max_neighbors (int):
-                Maximum number of neighbors for one atom
-
-            cutoff (float):
-                Initial cutoff distance for building the neighbor list
-
             has_velocity: boolean
                 Whether or not to set the velocities in the xyz.in file.
 
@@ -265,6 +270,9 @@ class GpumdAtoms(Atoms):
                 Directory to store output
 
         """
+        if self.max_neighbors is None or self.cutoff is None:
+            raise ValueError("Both max_neighbors and cutoff must be defined to write an xyz.in file.")
+
         # Assign type IDs
         type_dict = dict()
         for i, type_ in enumerate(list(set(self.get_chemical_symbols()))):
@@ -273,7 +281,7 @@ class GpumdAtoms(Atoms):
         # Create first two lines
         pbc = self.get_pbc()
         lx, ly, lz, a1, a2, a3 = tuple(self.cell.cellpar())
-        summary = f"{len(self)} {max_neighbors} {cutoff} {int(self.triclinic)} " \
+        summary = f"{len(self)} {self.max_neighbors} {self.cutoff} {int(self.triclinic)} " \
                   f"{int(has_velocity)} {self.num_group_methods}\n" \
                   f"{int(pbc[0])} {int(pbc[1])} {int(pbc[2])} "
 
