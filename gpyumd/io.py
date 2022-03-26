@@ -1,10 +1,7 @@
-from ase.io import write
-from ase.io import read
 from ase import Atom, Atoms
 import numpy as np
 from gpyumd.atoms import GpumdAtoms
 from gpyumd.util import get_path
-import sys
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -212,54 +209,3 @@ def write_basis(gpumd_atoms, filename='basis.in', directory='.'):
         raise ValueError("GpumdAtoms object is required to write a basis.in file.")
     gpumd_atoms.write_basis(filename, directory)
 
-
-# TODO perhaps remove --> leave this to a user
-def convert_gpumd_atoms(in_file='xyz.in', out_filename='in.xyz', output_format='xyz', atom_types=None):
-    """
-    Converts the GPUMD input structure file to any compatible ASE
-    output structure file.
-    **Warning: Info dictionary may not be preserved**.
-
-    Args:
-        in_file (str):
-            GPUMD position file to get structure from
-
-        out_filename (str):
-            Name of output file after conversion
-
-        output_format (str):
-            ASE supported output format
-
-        atom_types (list(str)):
-            List of atom types (elements).
-
-    """
-    atoms, max_neighbors, cutoff = load_xyz_in(in_file, atom_types)
-    write(out_filename, atoms, output_format)
-
-
-# TODO perhaps remove --> leave this to a user
-def lammps_atoms_to_gpumd(filename, max_neighbors, cutoff, style='atomic', gpumd_file='xyz.in'):
-    """
-    Converts a lammps data file to GPUMD compatible position file.
-
-    Args:
-        filename (str):
-            LAMMPS data file name
-
-        max_neighbors (int):
-            Maximum number of neighbors for one atom
-
-        cutoff (float):
-            Initial cutoff distance for building the neighbor list
-
-        style (str):
-            Atom style used in LAMMPS data file
-
-        gpumd_file (str):
-            File to save the structure data to
-
-    """
-    # Load atoms
-    atoms = read(filename, format='lammps-data', style=style)
-    atoms_to_xyz_in(atoms, max_neighbors, cutoff, gpumd_file=gpumd_file)
