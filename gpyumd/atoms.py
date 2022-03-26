@@ -299,6 +299,9 @@ class GpumdAtoms(Atoms):
         return
 
     def add_group_method(self, group):
+        if self.num_group_methods == 10:
+            print(f"A maximum of 10 grouping methods can be used. Current group will not be added.")
+            return
         self.group_methods.append(group)
         self.num_group_methods += 1
         return self.num_group_methods - 1
