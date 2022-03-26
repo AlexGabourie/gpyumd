@@ -305,30 +305,31 @@ class GpumdAtoms(Atoms):
         """
         Assigns a basis index for each atom in atoms. Updates atoms.
 
+        See https://github.com/brucefan1983/GPUMD/tree/master/examples/empirical_potentials/phonon_dispersion and
+        https://gpumd.zheyongfan.org/index.php/The_basis.in_input_file for more details.
+
         Args:
             index (list(int)):
-                Atom indices of those in the unit cell. Order is important.
+                Atom indices of those in the unit cell.
 
             mapping (list(int)):
                 Mapping of all atoms to the relevant basis positions
 
-
         """
         num_atoms = len(self)
-        self.unitcell = list()
-        self.basis = list()
         if index:
             if (mapping is None) or (len(mapping) != num_atoms):
                 raise ValueError("Full atom mapping required if index is provided.")
-            for unit_cell_idx in index:
-                self.unitcell.append(unit_cell_idx)
-            for atom_idx in range(num_atoms):
-                self.basis.append(mapping[atom_idx])
+            if not (sorted(set(mapping)) == list(range(len(mapping)))):
+                raise ValueError("Map index is out of bounds.")
+            if not len(set(mapping)) == len(index):
+                raise ValueError("Not all basis atoms accounted for in mapping.")
+            self.unitcell = index
+            self.basis = mapping
         else:
             # if no index provided, assume atoms is unit cell
-            for atom_idx in range(num_atoms):
-                self.unitcell.append(atom_idx)
-                self.basis.append(atom_idx)
+            self.unitcell = list(range(num_atoms))
+            self.basis = list(range(num_atoms))
 
     def repeat(self, rep):
         """
