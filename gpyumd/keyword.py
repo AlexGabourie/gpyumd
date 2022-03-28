@@ -1,6 +1,8 @@
 import operator as op
 import numbers
-from gpyumd.util import cond_assign, cond_assign_int, assign_bool, assign_number
+import os
+from gpyumd.util import cond_assign, cond_assign_int, assign_bool, assign_number, get_path
+from ase import Atom
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -873,4 +875,71 @@ class ComputePhonon(Keyword):
 
         self._set_args([self.cutoff, self.displacement])
 
-# TODO add potentials here?
+
+class Potential(Keyword):
+
+    supported_potentials = ["tersoff_1989", "tersoff_1988", "tersoff_mini", "sw_1985", "rebo_mos2", "eam_zhou_2004",
+                            "eam_dai_2006", "vashishta", "fcp", "nep", "nep_zbl", "nep3", "nep3_zbl", "nep4",
+                            "nep4_zbl", "lj", "ri"]
+
+    def __init__(self, filename, symbols=None, grouping_method=None, directory=None):
+        """
+        Special keyword that contains basic information about the potential.
+        Note: This does NOT check if the formatting of the potential is correct. It also does not provide the full
+        grammar of the kewyord.
+
+        https://gpumd.zheyongfan.org/index.php/The_potential_keyword
+
+        Args:
+            filename: string
+                Filename of the potential.
+
+            symbols: list of strings
+                A list of atomic symbols associated with the potential. Required for all but LJ potentials. The order
+                is important.
+
+            grouping_method: int
+                The grouping method used to exclude intra-material interactions for LJ potentials.
+
+            directory: string
+                The directory in which the potential will be found. If None provided, assumes potential will be in run
+                directory.
+        """
+        super().__init__('potential', take_immediate_action=True)
+        self.potential_path = filename if not directory else get_path(directory, filename)
+        if not os.path.exists(self.potential_path):
+            raise ValueError("The path to the potential does not exist.")
+        with open(self.potential_path, 'r') as f:
+            line = f.readline().split()
+        if len(line) < 2:
+            raise ValueError("Potential file header is not formatted correctly.")
+        potential_type, num_types = tuple(line[:2])
+        if potential_type not in Potential.supported_potentials:
+            raise ValueError("Potential file does not contain a supported potential.")
+        self.potential_type = potential_type
+        self.num_types = cond_assign_int(num_types, 0, op.gt, 'num_types')
+        self._set_args([self.potential_path])
+
+        if not self.potential_type == "lj":
+            if not symbols:
+                raise ValueError("A list of symbols must be provided for non-LJ potentials.")
+            self.symbols = self.__check_symbols(symbols)
+        else:
+            if grouping_method:
+                self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+
+    def update_symbols(self, symbols):
+        if not len(symbols) == self.num_types:
+            raise ValueError("Number of symbols does not match the number of types expected by the potential.")
+        self.symbols = self.__check_symbols(symbols)
+
+    @staticmethod
+    def __check_symbols(symbols):
+        try:
+            for symbol in symbols:
+                Atom(symbol)
+        except KeyError:
+            raise ValueError("Invalid symbol passed to a potential.")
+        return symbols
+
+
