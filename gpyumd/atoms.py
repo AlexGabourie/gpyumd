@@ -117,6 +117,7 @@ class GpumdAtoms(Atoms):
         # Needed for structure file
         self.max_neighbors = None
         self.cutoff = None
+        self.type_dict = None
 
     def set_max_neighbors(self, max_neighbors):
         self.max_neighbors = cond_assign_int(max_neighbors, 1, op.ge, 'max_neighbors')
@@ -124,6 +125,7 @@ class GpumdAtoms(Atoms):
     def set_cutoff(self, cutoff):
         self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
 
+    # TODO change type to symbol
     @staticmethod
     def __atom_type_sortkey(atom, order):
         """
@@ -254,6 +256,7 @@ class GpumdAtoms(Atoms):
 
         return
 
+    # TODO add use_type_dict boolean (only to be available to object, not the io.write_gpumd function?)?
     # TODO add ability to customize which species goes with each type
     def write_gpumd(self, has_velocity=False, gpumd_file='xyz.in', directory=None):
         """
@@ -273,6 +276,7 @@ class GpumdAtoms(Atoms):
         if self.max_neighbors is None or self.cutoff is None:
             raise ValueError("Both max_neighbors and cutoff must be defined to write an xyz.in file.")
 
+        # TODO add another parameter that manages the potential keywords (i.e., can pass a type_dict)
         # Assign type IDs
         type_dict = dict()
         for i, type_ in enumerate(list(set(self.get_chemical_symbols()))):
@@ -501,7 +505,7 @@ class GpumdAtoms(Atoms):
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
 
-    def group_by_type(self, symbols):
+    def group_by_symbol(self, symbols):
         """
         Assigns groups to all atoms based on atom symbols. Returns a
         bookkeeping parameter, but atoms will be udated in-place.
