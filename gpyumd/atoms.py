@@ -1,12 +1,116 @@
 import operator as op
 import numpy as np
-from ase import Atoms
+from ase import Atoms, Atom
 from abc import ABC, abstractmethod
 from gpyumd.util import check_list, check_range, get_path, cond_assign_int, cond_assign
 from numpy import prod
+from typing import Type, List, Union, Tuple
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
+
+
+class GroupMethod(ABC):
+
+    def __init__(self, group_type=None):
+        """
+        Stores grouping information for a GpumdAtoms object
+        """
+        self.groups = None
+        self.num_groups = None
+        self.group_type = group_type
+        self.counts = None
+
+    @abstractmethod
+    def update(self, atoms, order=None):
+        pass
+
+
+class GroupGeneric(GroupMethod):
+
+    def __init__(self, groups):
+        """
+        Grouping with no specific guidelines. Mostly used for loaded xyz.in files.
+        """
+        super().__init__(group_type='generic')
+        self.num_groups = len(set(groups))
+        if not (sorted(set(groups)) == list(range(self.num_groups))):
+            raise ValueError("Groups are not contiguous.")
+        self.counts = np.zeros(self.num_groups, dtype=int)
+        for group in groups:
+            self.counts[group] += 1
+        self.groups = groups
+
+    def update(self, atoms, order=None):
+        if not order:
+            raise ValueError("Generic groups are only updated with new atom ordering. "
+                             "The 'order' parameter is required.")
+        new_groups = list()
+        for index in order:
+            new_groups.append(self.groups[index])
+        self.groups = new_groups
+
+
+class GroupBySymbol(GroupMethod):
+
+    def __init__(self, symbols):
+        super().__init__(group_type='type')
+        self.symbols = symbols
+        self.num_groups = len(set(symbols.values()))
+        self.counts = np.zeros(self.num_groups, dtype=int)
+
+    def update(self, atoms, order=None):
+        num_atoms = len(atoms)
+        self.groups = np.full(num_atoms, -1, dtype=int)
+        for index, atom in enumerate(atoms):
+            atom_group = self.symbols[atom.symbol]
+            self.counts[atom_group] += 1
+            self.groups[index] = atom_group
+
+
+class GroupByPosition(GroupMethod):
+
+    def __init__(self, split, direction):
+        super().__init__(group_type='position')
+        self.split = split
+        self.direction = direction
+        self.num_groups = len(split) - 1
+        self.counts = np.zeros(self.num_groups, dtype=int)
+
+    def update(self, atoms, order=None):
+        num_atoms = len(atoms)
+        self.groups = np.full(num_atoms, -1, dtype=int)
+        for index, atom in enumerate(atoms):
+            atom_group = self.get_group(atom.position)
+            self.groups[index] = atom_group
+            self.counts[atom_group] += 1
+
+    def get_group(self, position):
+        """
+        Gets the group that an atom belongs to based on its position. Only works in
+        one direction as it is used for NEMD.
+
+        Args:
+            position: list of floats of length 3
+                Position of the atom
+
+        Returns:
+            int: Group of atom
+        """
+        if self.direction == 'x':
+            dim_pos = position[0]
+        elif self.direction == 'y':
+            dim_pos = position[1]
+        else:
+            dim_pos = position[2]
+        errmsg = f"The position {dim_pos} in the {self.direction} direction is out of bounds based" \
+                 f" on the split provided."
+        for split_idx, boundary in enumerate(self.split[:-1]):
+            if split_idx == 0 and dim_pos < boundary:
+                raise ValueError(errmsg)
+            if boundary <= dim_pos < self.split[split_idx + 1]:
+                return split_idx
+        raise ValueError(errmsg)
 
 
 class GpumdAtoms(Atoms):
@@ -119,56 +223,63 @@ class GpumdAtoms(Atoms):
         self.cutoff = None
         self.type_dict = None
 
-    def set_max_neighbors(self, max_neighbors):
-        self.max_neighbors = cond_assign_int(max_neighbors, 1, op.ge, 'max_neighbors')
-
-    def set_cutoff(self, cutoff):
-        self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
-
-    # TODO change type to symbol
-    @staticmethod
-    def __atom_type_sortkey(atom, order):
+    def set_max_neighbors(self, max_neighbors: int) -> None:
         """
-        Used as a key for sorting atom type
+        Set the maximum size of the neighbor list.
 
         Args:
-            atom: ase.Atom
-                Atom object
+            max_neighbors: Maximum number of neighbors
+        """
+        self.max_neighbors = cond_assign_int(max_neighbors, 1, op.ge, 'max_neighbors')
+
+    def set_cutoff(self, cutoff: float) -> None:
+        """
+        Sets the global cutoff for the GpumdAtoms object.
+
+        Args:
+            cutoff: The cutoff to use in the xyz.in file
+        """
+        self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
+
+    @staticmethod
+    def __atom_symbol_sortkey(atom: Type[Atom], order: List[str]) -> int:
+        """
+        Used as a key for sorting atom type.
+
+        Args:
+            atom: atom to determine order of
+            order: list of atom symbols in desired order
+
+        Returns:
+            position of atom in the selected order
         """
         for i, sym in enumerate(order):
             if sym == atom.symbol:
                 return i
 
     @staticmethod
-    def __atom_group_sortkey(atom, group, order):
+    def __atom_group_sortkey(atom: Type[Atom], group: List[int], order: List[int]) -> int:
         """
-        Used as a key for sorting atom groups for GPUMD in.xyz files
+       Used as a key for sorting atom groups for GPUMD in.xyz files.
 
         Args:
-            atom: ase.Atom
-                Atom object
+            atom: atom to determine order of
+            group: Store the group information of each atom (1-to-1 correspondence)
+            order: A list of ints in desired order for groups at group_index
 
-            group: list of ints
-                Store the group information of each atom (1-to-1 correspondence)
-
-            order: list of ints
-                A list of ints in desired order for groups at group_index
-
+        Returns:
+            position of atom in the selected order
         """
         for i, curr_group in enumerate(order):
             if curr_group == group[atom.index]:
                 return i
 
-    def __enforce_sort(self, atom_order):
+    def __enforce_sort(self, atom_order: List[int]) -> None:
         """
         Helper for sort_atoms.
 
         Args:
-            atom_order: List of ints
-                New atom order based on sorting
-
-        Returns:
-
+            atom_order: New atom order based on sorting
         """
         atoms_list = list()
         for index in atom_order:
@@ -179,13 +290,12 @@ class GpumdAtoms(Atoms):
         for group in self.group_methods:
             group.update(self)
 
-    def __update_atoms(self, atoms_list):
+    def __update_atoms(self, atoms_list: List[Type[Atom]]) -> None:
         """
-        Args:
-            atoms_list: List of Atoms
+        Updates the Atoms part of the GpumdAtoms object.
 
-        Returns:
-            None
+        Args:
+            atoms_list: List of Atom objects
         """
         symbols = list()
         positions = np.zeros((len(atoms_list), 3))
@@ -215,19 +325,17 @@ class GpumdAtoms(Atoms):
         # Do not add this to ase.Atoms. Already stored as momenta. ASE does not allow both anyways.
         # velocities=self.get_velocities()
 
-    def sort_atoms(self, sort_key=None, order=None, group_method=None):
+    def sort_atoms(self, sort_key: str = None, order: Union[List[str], List[int]] = None,
+                   group_method: int = None) -> None:
         """
+        Sorts the atoms according to a specified order.
 
         Args:
-            sort_key: string
-                How to sort atoms ('group', 'type').
-            order: list of strings or list of ints
-                For sort_key=='type', a list of atomic symbol strings in the desired order. Ex: ["Mo", "S", "Si", "O"]
+            sort_key: How to sort atoms ('group', 'type')
+            order:
+                For sort_key=='type', a list of atomic symbol strings in the desired order. Ex: ["Mo", "S", "Si", "O"].
                 For sort_key=='group', a list of ints in desired order for groups at group_index. Ex: [1,3,2,4]
-            group_method: int
-                Selects the group to sort in the output.
-        Returns:
-
+            group_method: Selects the group to sort in the output.
         """
         if not sort_key and not order and not group_method:
             print("Warning: No sorting parameters passed. Nothing has been changed.")
@@ -238,7 +346,7 @@ class GpumdAtoms(Atoms):
             if not order:
                 raise ValueError("Sorting by type requires the 'order' parameter.")
             self.__enforce_sort(sorted(index_range,
-                                       key=lambda atom_idx: self.__atom_type_sortkey(self[atom_idx], order)))
+                                       key=lambda atom_idx: self.__atom_symbol_sortkey(self[atom_idx], order)))
         elif sort_key == 'group':
             if not order or group_method:
                 raise ValueError("Sorting by group requires the 'order' and 'group_method' parameters.")
@@ -254,24 +362,16 @@ class GpumdAtoms(Atoms):
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
-        return
-
     # TODO add use_type_dict boolean (only to be available to object, not the io.write_gpumd function?)?
     # TODO add ability to customize which species goes with each type
-    def write_gpumd(self, has_velocity=False, gpumd_file='xyz.in', directory=None):
+    def write_gpumd(self, has_velocity: bool = False, gpumd_file: str = 'xyz.in', directory: str = None) -> None:
         """
         Creates and xyz.in file.
 
         Args:
-            has_velocity: boolean
-                Whether or not to set the velocities in the xyz.in file.
-
-            gpumd_file (str):
-                File to save the structure data to
-
-            directory: string
-                Directory to store output
-
+            has_velocity: Whether or not to set the velocities in the xyz.in file.
+            gpumd_file: File to save the structure data to
+            directory: Directory to store output
         """
         if self.max_neighbors is None or self.cutoff is None:
             raise ValueError("Both max_neighbors and cutoff must be defined to write an xyz.in file.")
@@ -308,17 +408,25 @@ class GpumdAtoms(Atoms):
                 for group in self.group_methods:
                     line += f"{group.groups[atom.index]} "
                 f.writelines(line)
-        return
 
-    def add_group_method(self, group):
+    def add_group_method(self, group: "GroupMethod") -> int:
+        """
+        Add a grouping method to the GpumdAtoms object.
+
+        Args:
+            group: The group method to add
+
+        Returns:
+            Index of grouping method
+        """
         if self.num_group_methods == 10:
             print(f"A maximum of 10 grouping methods can be used. Current group will not be added.")
-            return
+            return self.num_group_methods - 1
         self.group_methods.append(group)
-        self.num_group_methods += 1
+        self.num_group_methods = len(self.group_methods)
         return self.num_group_methods - 1
 
-    def add_basis(self, index=None, mapping=None):
+    def add_basis(self, index: List[int] = None, mapping: List[int] = None) -> None:
         """
         Assigns a basis index for each atom in atoms. Updates atoms.
 
@@ -326,12 +434,8 @@ class GpumdAtoms(Atoms):
         https://gpumd.zheyongfan.org/index.php/The_basis.in_input_file for more details.
 
         Args:
-            index (list(int)):
-                Atom indices of those in the unit cell.
-
-            mapping (list(int)):
-                Mapping of all atoms to the relevant basis positions
-
+            index: Atom indices of those in the unit cell.
+            mapping: Mapping of all atoms to the relevant basis positions
         """
         num_atoms = len(self)
         if index:
@@ -348,14 +452,16 @@ class GpumdAtoms(Atoms):
             self.unitcell = list(range(num_atoms))
             self.basis = list(range(num_atoms))
 
-    def repeat(self, rep):
+    # TODO update structure in-place
+    def repeat(self, rep: Union[int, List[int]]) -> "GpumdAtoms":
         """
         A wrapper of ase.Atoms.repeat that is aware of GPUMD's basis information.
 
         Args:
-            rep (int | list(3 ints)):
-                List of three positive integers or a single integer
+            rep: List of three positive integers or a single integer
 
+        Returns:
+            New repeated GpumdAtoms
         """
         rep = check_list(rep, varname='rep', dtype=int)
         replen = len(rep)
@@ -371,123 +477,19 @@ class GpumdAtoms(Atoms):
 
         return supercell
 
-    class GroupMethod(ABC):
-
-        def __init__(self, group_type=None):
-            """
-            Stores grouping information for a GpumdAtoms object
-            """
-            self.groups = None
-            self.num_groups = None
-            self.group_type = group_type
-            self.counts = None
-
-        @abstractmethod
-        def update(self, atoms, order=None):
-            pass
-
-    class GroupGeneric(GroupMethod):
-
-        def __init__(self, groups):
-            """
-            Grouping with no specific guidelines. Mostly used for loaded xyz.in files.
-            """
-            super().__init__(group_type='generic')
-            self.num_groups = len(set(groups))
-            if not (sorted(set(groups)) == list(range(self.num_groups))):
-                raise ValueError("Groups are not contiguous.")
-            self.counts = np.zeros(self.num_groups, dtype=int)
-            for group in groups:
-                self.counts[group] += 1
-            self.groups = groups
-
-        def update(self, atoms, order=None):
-            if not order:
-                raise ValueError("Generic groups are only updated with new atom ordering. "
-                                 "The 'order' parameter is required.")
-            new_groups = list()
-            for index in order:
-                new_groups.append(self.groups[index])
-            self.groups = new_groups
-
-    class GroupBySymbol(GroupMethod):
-
-        def __init__(self, symbols):
-            super().__init__(group_type='type')
-            self.symbols = symbols
-            self.num_groups = len(set(symbols.values()))
-            self.counts = np.zeros(self.num_groups, dtype=int)
-
-        def update(self, atoms, order=None):
-            num_atoms = len(atoms)
-            self.groups = np.full(num_atoms, -1, dtype=int)
-            for index, atom in enumerate(atoms):
-                atom_group = self.symbols[atom.symbol]
-                self.counts[atom_group] += 1
-                self.groups[index] = atom_group
-
-    class GroupByPosition(GroupMethod):
-
-        def __init__(self, split, direction):
-            super().__init__(group_type='position')
-            self.split = split
-            self.direction = direction
-            self.num_groups = len(split) - 1
-            self.counts = np.zeros(self.num_groups, dtype=int)
-
-        def update(self, atoms, order=None):
-            num_atoms = len(atoms)
-            self.groups = np.full(num_atoms, -1, dtype=int)
-            for index, atom in enumerate(atoms):
-                atom_group = self.get_group(atom.position)
-                self.groups[index] = atom_group
-                self.counts[atom_group] += 1
-
-        def get_group(self, position):
-            """
-            Gets the group that an atom belongs to based on its position. Only works in
-            one direction as it is used for NEMD.
-
-            Args:
-                position: list of floats of length 3
-                    Position of the atom
-
-            Returns:
-                int: Group of atom
-            """
-            if self.direction == 'x':
-                dim_pos = position[0]
-            elif self.direction == 'y':
-                dim_pos = position[1]
-            else:
-                dim_pos = position[2]
-            errmsg = f"The position {dim_pos} in the {self.direction} direction is out of bounds based" \
-                     f" on the split provided."
-            for split_idx, boundary in enumerate(self.split[:-1]):
-                if split_idx == 0 and dim_pos < boundary:
-                    raise ValueError(errmsg)
-                if boundary <= dim_pos < self.split[split_idx + 1]:
-                    return split_idx
-            raise ValueError(errmsg)
-
-    def group_by_position(self, split, direction):
+    def group_by_position(self, split: List[float], direction: str) -> Tuple[int, np.ndarray]:
         """
         Assigns groups to all atoms based on its position. Only works in
         one direction as it is used for NEMD.
         Returns a bookkeeping parameter, but atoms will be udated in-place.
 
         Args:
-            split (list(float)):
-                List of boundaries in ascending order. First element should be lower boundary of sim.
+            split: List of boundaries in ascending order. First element should be lower boundary of sim.
                 box in specified direction and the last the upper.
-
-            direction (str):
-                Which direction the split will work.
+            direction: Which direction the split will work
 
         Returns:
-            str: A string with the name of the grouping method.
-            int: A list of number of atoms in each group.
-
+            (index of the grouping method, number of atoms in each group)
         """
         if not (direction in ['x', 'y', 'z']):
             raise ValueError("The 'direction' parameter must be in 'x', 'y', 'or 'z'.")
@@ -500,26 +502,23 @@ class GpumdAtoms(Atoms):
         if not all([split[i + 1] > split[i] for i in range(splitlen - 1)]):
             raise ValueError("The 'split' parameter must be ascending.")
 
-        group = self.GroupByPosition(split, direction)
+        group = GroupByPosition(split, direction)
         group.update(self)
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
 
-    def group_by_symbol(self, symbols):
+    def group_by_symbol(self, symbols: dict) -> Tuple[int, np.ndarray]:
         """
-        Assigns groups to all atoms based on atom symbols. Returns a
+       Assigns groups to all atoms based on atom symbols. Returns a
         bookkeeping parameter, but atoms will be udated in-place.
 
         Args:
-            symbols (dict):
-                Dictionary with symbols for keys and group as a value.
+            symbols: Dictionary with symbols for keys and group as a value.
                 Only one group allowed per atom. Assumed groups are integers
-                starting at 0 and increasing in steps of 1. Ex. range(0,10).
+                starting at 0 and increasing in steps of 1.
 
         Returns:
-            str: A string with the name of the grouping method.
-            int: A list of number of atoms in each group.
-
+            (index of the grouping method, number of atoms in each group)
         """
         # atom symbol checking
         all_symbols = list(symbols)
@@ -529,32 +528,24 @@ class GpumdAtoms(Atoms):
         if not len(set(all_symbols)) == len(all_symbols):
             raise ValueError('Group not assigned to all atom symbols.')
 
-        group = self.GroupBySymbol(symbols)
+        group = GroupBySymbol(symbols)
         group.update(self)
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
 
-    def write_kpoints(self, path='G', npoints=1, special_points=None, filename='kpoints.in', directory=None):
+    def write_kpoints(self, path: str = 'G', npoints: int = 1, special_points: dict = None,
+                      filename: str = 'kpoints.in', directory: str = None) -> Tuple[np.ndarray, None, List[str]]:
         """
-         Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
+        Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
 
         Args:
-            path: str
-                String of special point names defining the path, e.g. 'GXL'
-
-            npoints: int
-                Number of points in total.  Note that at least one point
-                is added for each special point in the path
-
-            special_points: dict
-                Dictionary mapping special points to scaled kpoint coordinates.
+            path: String of special point names defining the path, e.g. 'GXL'
+            npoints: Number of points in total.  Note that at least one point is added for each special point in the
+                path
+            special_points: Dictionary mapping special points to scaled kpoint coordinates.
                 For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
-
-            filename: string
-                File to save the structure data to
-
-            directory: string
-                Directory to store output
+            filename: File to save the structure data to
+            directory: Directory to store output
 
         Returns:
             kpoints converted to x-coordinates, x-coordinates of the high symmetry points, labels of those points.
@@ -568,17 +559,14 @@ class GpumdAtoms(Atoms):
         np.savetxt(get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
         return path.get_linear_kpoint_axis()
 
-    def write_basis(self, filename='basis.in', directory=None):
+    def write_basis(self, filename: str = "basis.in", directory: str = None) -> None:
         """
         Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
         Related: atoms.add_basis, atoms.repeat
 
         Args:
-            filename: string
-                File to save the structure data to
-
-            directory: string
-                Directory to store output
+            filename: File to save the structure data to
+            directory: Directory to store output
         """
         if self.unitcell is None or self.basis is None:
             raise ValueError("Both the unit cell and basis must be defined to write the basis.in file. "
