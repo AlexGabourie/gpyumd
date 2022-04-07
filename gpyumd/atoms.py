@@ -2,14 +2,15 @@ import operator as op
 import numpy as np
 from ase import Atoms, Atom
 from abc import ABC, abstractmethod
-from gpyumd.util import check_list, check_range, get_path, cond_assign_int, cond_assign
+from gpyumd.util import check_list, check_range, get_path, cond_assign_int, cond_assign, check_symbols
 from numpy import prod
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Dict
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
+# TODO move to new module?
 class GroupMethod(ABC):
 
     def __init__(self, group_type=None):
@@ -221,7 +222,9 @@ class GpumdAtoms(Atoms):
         # Needed for structure file
         self.max_neighbors = None
         self.cutoff = None
-        self.type_dict = None
+        self.type_dict = dict()  # keys (symbol): value (gpumd type)
+        for i, type_ in enumerate(list(set(self.get_chemical_symbols()))):
+            self.type_dict[type_] = i
 
     def set_max_neighbors(self, max_neighbors: int) -> None:
         """
@@ -362,8 +365,21 @@ class GpumdAtoms(Atoms):
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
-    # TODO add use_type_dict boolean (only to be available to object, not the io.write_gpumd function?)?
-    # TODO add ability to customize which species goes with each type
+    def set_type_dict(self, type_dict: Dict[str, int]) -> None:
+        """
+        Assigns atomic symbols to GPUMD types
+
+        Args:
+            type_dict: Atomic symbol keys and type values
+        """
+        if not (sorted(type_dict.values()) == list(range(len(set(type_dict.values()))))):
+            raise ValueError("type_dict must have a set of contiguous positive integers (including zero).")
+        check_symbols(list(type_dict.keys()))
+        for symbol in type_dict.keys():
+            if symbol not in self.type_dict:
+                raise ValueError(f"'{symbol}' symbol does not exist in the GpumdAtoms object.")
+        self.type_dict = type_dict
+
     def write_gpumd(self, has_velocity: bool = False, gpumd_file: str = 'xyz.in', directory: str = None) -> None:
         """
         Creates and xyz.in file.
@@ -375,12 +391,6 @@ class GpumdAtoms(Atoms):
         """
         if self.max_neighbors is None or self.cutoff is None:
             raise ValueError("Both max_neighbors and cutoff must be defined to write an xyz.in file.")
-
-        # TODO add another parameter that manages the potential keywords (i.e., can pass a type_dict)
-        # Assign type IDs
-        type_dict = dict()
-        for i, type_ in enumerate(list(set(self.get_chemical_symbols()))):
-            type_dict[type_] = i
 
         # Create first two lines
         pbc = self.get_pbc()
@@ -401,7 +411,7 @@ class GpumdAtoms(Atoms):
             f.writelines(summary)
             for atom in self:
                 pos = atom.position
-                line = f"\n{type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass} "
+                line = f"\n{self.type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass} "
                 if has_velocity:
                     vel = [p / atom.mass for p in atom.momentum]
                     line += f"{vel[0]} {vel[1]} {vel[2]} "

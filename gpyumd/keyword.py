@@ -1,8 +1,9 @@
 import operator as op
 import numbers
 import os
-from gpyumd.util import cond_assign, cond_assign_int, assign_bool, assign_number, get_path
-from ase import Atom
+# TODO change import to "import gpyumd.util as util" and update code so it is clear where code came from
+from gpyumd.util import cond_assign, cond_assign_int, assign_bool, assign_number, get_path, check_symbols
+
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -923,7 +924,7 @@ class Potential(Keyword):
         if not self.potential_type == "lj":
             if not symbols:
                 raise ValueError("A list of symbols must be provided for non-LJ potentials.")
-            self.symbols = self.__check_symbols(symbols)
+            self.symbols = check_symbols(symbols)
         else:
             if grouping_method:
                 self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
@@ -931,15 +932,7 @@ class Potential(Keyword):
     def update_symbols(self, symbols):
         if not len(symbols) == self.num_types:
             raise ValueError("Number of symbols does not match the number of types expected by the potential.")
-        self.symbols = self.__check_symbols(symbols)
+        self.symbols = check_symbols(symbols)
 
-    @staticmethod
-    def __check_symbols(symbols):
-        try:
-            for symbol in symbols:
-                Atom(symbol)
-        except KeyError:
-            raise ValueError("Invalid symbol passed to a potential.")
-        return symbols
 
 

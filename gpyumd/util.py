@@ -1,10 +1,21 @@
 import re
 import os
 import numbers
+from ase import Atom
+from typing import List
 
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
+
+
+def check_symbols(symbols: List[str]):
+    try:
+        for symbol in symbols:
+            Atom(symbol)
+    except KeyError:
+        raise ValueError("Invalid symbol passed to a potential.")
+    return symbols
 
 
 def assign_bool(var, varname):
