@@ -4,7 +4,7 @@ from ase import Atoms, Atom
 from abc import ABC, abstractmethod
 from gpyumd.util import check_list, check_range, get_path, cond_assign_int, cond_assign
 from numpy import prod
-from typing import Type, List, Union, Tuple
+from typing import List, Union, Tuple
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -242,7 +242,7 @@ class GpumdAtoms(Atoms):
         self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
 
     @staticmethod
-    def __atom_symbol_sortkey(atom: Type[Atom], order: List[str]) -> int:
+    def __atom_symbol_sortkey(atom: Atom, order: List[str]) -> int:
         """
         Used as a key for sorting atom type.
 
@@ -258,7 +258,7 @@ class GpumdAtoms(Atoms):
                 return i
 
     @staticmethod
-    def __atom_group_sortkey(atom: Type[Atom], group: List[int], order: List[int]) -> int:
+    def __atom_group_sortkey(atom: Atom, group: List[int], order: List[int]) -> int:
         """
        Used as a key for sorting atom groups for GPUMD in.xyz files.
 
@@ -290,7 +290,7 @@ class GpumdAtoms(Atoms):
         for group in self.group_methods:
             group.update(self)
 
-    def __update_atoms(self, atoms_list: List[Type[Atom]]) -> None:
+    def __update_atoms(self, atoms_list: List[Atom]) -> None:
         """
         Updates the Atoms part of the GpumdAtoms object.
 
