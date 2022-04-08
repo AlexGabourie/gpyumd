@@ -40,14 +40,15 @@ class Keyword:
 
         Args:
             required_args (list): A list of arguments required for the keyword. Must be in correct order.
-            optional_args (dict or list): A dictionary of the optional arguments with optional label as the key. If a
+            optional_args (list): A dictionary of the optional arguments with optional label as the key. If a
                 list, optional arguments are added in order
         Returns:
             None
         """
         # TODO have a reset or extension?
         self.required_args = required_args
-        self.optional_args = optional_args
+        if optional_args:
+            self.optional_args = self._option_check(optional_args)
 
     def valid_group_options(self, grouping_method, group_id):
         # Take care of grouping options
@@ -387,7 +388,7 @@ class DumpPosition(Keyword):
             self.precision = precision
             options.extend(['precision', self.precision])
 
-        self._set_args([self.interval], optional_args=self._option_check(options))
+        self._set_args([self.interval], optional_args=options)
 
 
 class DumpNetCDF(Keyword):
@@ -412,7 +413,7 @@ class DumpNetCDF(Keyword):
             self.precision = precision
             options.extend(['precision', self.precision])
 
-        self._set_args([self.interval], optional_args=self._option_check(options))
+        self._set_args([self.interval], optional_args=options)
 
 
 class DumpRestart(Keyword):
@@ -450,7 +451,7 @@ class DumpVelocity(Keyword):
         options = list()
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
-        self._set_args([self.interval], optional_args=self._option_check(options))
+        self._set_args([self.interval], optional_args=options)
 
 
 class DumpForce(Keyword):
@@ -472,7 +473,7 @@ class DumpForce(Keyword):
         options = list()
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
-        self._set_args([self.interval], optional_args=self._option_check(options))
+        self._set_args([self.interval], optional_args=options)
 
 
 class DumpEXYZ(Keyword):
@@ -574,7 +575,7 @@ class ComputeSHC(Keyword):
         transport_dict = {'x': 0, 'y': 1, 'z': 2}
 
         self._set_args([self.sample_interval, self.num_corr_steps, transport_dict[self.transport_direction],
-                        self.num_omega, self.max_omega], optional_args=self._option_check(options))
+                        self.num_omega, self.max_omega], optional_args=options)
 
 
 class ComputeDOS(Keyword):
@@ -610,8 +611,7 @@ class ComputeDOS(Keyword):
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
 
-        self._set_args([self.sample_interval, self.num_corr_steps, self.max_omega],
-                       optional_args=self._option_check(options))
+        self._set_args([self.sample_interval, self.num_corr_steps, self.max_omega], optional_args=options)
 
 
 class ComputeSDC(Keyword):
@@ -637,7 +637,7 @@ class ComputeSDC(Keyword):
         if self.valid_group_options(grouping_method, group_id):
             options.extend(['group', self.grouping_method, self.group_id])
 
-        self._set_args([self.sample_interval, self.num_corr_steps], optional_args=self._option_check(options))
+        self._set_args([self.sample_interval, self.num_corr_steps], optional_args=options)
 
 
 class ComputeHAC(Keyword):
@@ -919,8 +919,8 @@ class Potential(Keyword):
             raise ValueError("Potential file does not contain a supported potential.")
         self.potential_type = potential_type
         self.num_types = cond_assign_int(num_types, 0, op.gt, 'num_types')
-        self._set_args([self.potential_path])
 
+        options = list()
         if not self.potential_type == "lj":
             if not symbols:
                 raise ValueError("A list of symbols must be provided for non-LJ potentials.")
@@ -928,6 +928,9 @@ class Potential(Keyword):
         else:
             if grouping_method:
                 self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+                options.append(self.grouping_method)
+
+        self._set_args([self.potential_path], optional_args=options)
 
     def update_symbols(self, symbols):
         if not len(symbols) == self.num_types:

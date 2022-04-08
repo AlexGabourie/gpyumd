@@ -14,7 +14,7 @@ def check_symbols(symbols: List[str]):
         for symbol in symbols:
             Atom(symbol)
     except KeyError:
-        raise ValueError("Invalid symbol passed to a potential.")
+        raise ValueError("Invalid atomic symbol.")
     return symbols
 
 
