@@ -1,6 +1,7 @@
 import operator as op
 import numbers
 import os
+from typing import List
 # TODO change import to "import gpyumd.util as util" and update code so it is clear where code came from
 from gpyumd.util import cond_assign, cond_assign_int, assign_bool, assign_number, get_path, check_symbols
 
@@ -936,6 +937,16 @@ class Potential(Keyword):
         if not len(symbols) == self.num_types:
             raise ValueError("Number of symbols does not match the number of types expected by the potential.")
         self.symbols = check_symbols(symbols)
+
+    def set_types(self, types: List[int]) -> None:
+        if self.potential_type == "lj":
+            raise ValueError("type arguments are not allowed for lj potentials.")
+        if not len(types) == self.num_types:
+            raise ValueError("Incorrect number of types.")
+        if not types == list(range(min(types), max(types)+1)):
+            raise ValueError("types must be ascending and contiguous.")
+        self._set_args(self.required_args, optional_args=types)
+
 
 
 

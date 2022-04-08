@@ -3,13 +3,15 @@ import math
 import os
 from ase import Atoms
 from gpyumd.atoms import GpumdAtoms
-from gpyumd.keyword import Ensemble, Keyword, RunKeyword
-from gpyumd.util import create_directory, get_path
+from gpyumd.keyword import Ensemble, Keyword, RunKeyword, Potential
+from gpyumd.util import create_directory, check_symbols
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
+# TODO import modules only, not functions from  modules. This will make the code much more readable
+# TODO add type hinting -> should simplify the docstrings by removing the types
 # TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
 
@@ -87,6 +89,55 @@ class Simulation:
         if not self.static_calc:
             self.static_calc = StaticCalc()
         self.static_calc.add_calc(keyword)
+
+    def add_potential(self, potential):
+        if not self.potentials:
+            self.potentials = Potentials(self.atoms)
+        self.potentials.add_potential(potential)
+
+
+class Potentials:
+    """
+    so if the atoms have not already been sorted, then we can set the type dict. Otherwise, we try to enforce the sorted
+    order. I guess the type numbers of the sorted atoms can be whatever, but it would be nice to be consistent.
+    """
+
+    def __init__(self, gpumd_atoms: GpumdAtoms):
+        self.potentials = list()
+        self.gpumd_atoms = gpumd_atoms
+        self.type_dict = None
+
+    def add_potential(self, potential):
+        if not isinstance(potential, Potential):
+            raise ValueError("Must add a Potential keyword to the potentials list.")
+
+        if not potential.potential_type == "lj":
+            for symbol in potential.symbols:
+                if symbol in self.type_dict:
+                    raise ValueError(f"The atomic symbol {symbol} has already been accounted for in a potential.")
+                if symbol not in set(self.gpumd_atoms.get_chemical_symbols()):
+                    raise ValueError(f"The atomic symbol {symbol} is not part of the GpumdAtoms object.")
+                check_symbols([symbol])
+                self.type_dict[symbol] = len(self.type_dict)
+
+        elif potential.grouping_method and (self.gpumd_atoms.num_group_methods - 1) < potential.grouping_method:
+            raise ValueError(f"The selected grouping method is larger than the number of grouping"
+                             f" methods avaialbe in the GpumdAtoms object.")
+
+        self.potentials.append(potential)
+
+    def finalize_types(self):
+        """
+        Sets the type dict for the GpumdAtoms object based on the potentials that have been added.
+        """
+        self.gpumd_atoms.set_type_dict(self.type_dict)
+        # TODO Add optional args for non-lj
+        for potential in self.potentials:
+            if not potential.potential_type == 'lj':
+                types = list()
+                for symbol in potential.symbols:
+                    types.append(self.type_dict[symbol])
+                potential.set_types(types)
 
 
 class StaticCalc:
@@ -182,6 +233,10 @@ class Run:
         # Do not allow static calculations except minimize
         if keyword.keyword in ['compute_cohesive', 'compute_elastic', 'compute_phonon']:
             print(f"The {keyword.keyword} keyword is not allowed in a run. It is a static calculation.\n")
+            return
+
+        if keyword.keyword == 'potential':
+            print(f"The {keyword.keyword} keyword can only be added via the add_potential function in the Sim class.")
             return
 
         self.validate_keyword(keyword, final_check)

@@ -375,9 +375,13 @@ class GpumdAtoms(Atoms):
         if not (sorted(type_dict.values()) == list(range(len(set(type_dict.values()))))):
             raise ValueError("type_dict must have a set of contiguous positive integers (including zero).")
         check_symbols(list(type_dict.keys()))
+        if len(type_dict.keys()) > len(set(type_dict.keys())):
+            raise ValueError("type_dict cannot have duplicate symbol entries.")
         for symbol in type_dict.keys():
             if symbol not in self.type_dict:
                 raise ValueError(f"'{symbol}' symbol does not exist in the GpumdAtoms object.")
+        if not (set(self.get_chemical_symbols()) == set(type_dict.keys())):
+            raise ValueError("Set of symbols must match those of the GpumdAtoms object.")
         self.type_dict = type_dict
 
     def write_gpumd(self, has_velocity: bool = False, gpumd_file: str = 'xyz.in', directory: str = None) -> None:
