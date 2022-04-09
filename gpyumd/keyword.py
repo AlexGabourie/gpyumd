@@ -2,8 +2,7 @@ import operator as op
 import numbers
 import os
 from typing import List
-# TODO change import to "import gpyumd.util as util" and update code so it is clear where code came from
-from gpyumd.util import cond_assign, cond_assign_int, assign_bool, assign_number, get_path, check_symbols
+import gpyumd.util as util
 
 
 __author__ = "Alexander Gabourie"
@@ -56,8 +55,8 @@ class Keyword:
         if not (bool(grouping_method) == bool(group_id)):
             raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
         elif grouping_method and group_id:
-            self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
-            self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
+            self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+            self.group_id = util.cond_assign_int(group_id, 0, op.ge, 'group_id')
 
     @staticmethod
     def _option_check(options):
@@ -76,7 +75,7 @@ class Velocity(Keyword):
             initial_temperature (float): Initial temperature of the system. [K]
         """
         super().__init__('velocity', take_immediate_action=True)
-        self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+        self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
         self._set_args([self.initial_temperature])
 
     def __str__(self):
@@ -98,11 +97,11 @@ class TimeStep(Keyword):
             max_distance_per_step (float): The maximum distance an atom can travel within one step [Angstroms]
         """
         super().__init__('time_step', propagating=True)
-        self.dt_in_fs = cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
+        self.dt_in_fs = util.cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
 
         optional = None
         if max_distance_per_step:
-            self.max_distance_per_step = cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
+            self.max_distance_per_step = util.cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
         self._set_args([self.dt_in_fs], optional_args=optional)
@@ -211,9 +210,9 @@ class Ensemble(Keyword):
             self.parameters_set = False
 
         def set_parameters(self, initial_temperature, final_temperature, thermostat_coupling):
-            self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
-            self.final_temperature = cond_assign(final_temperature, 0, op.gt, 'final_temperature')
-            self.thermostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+            self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+            self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
+            self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             self.parameters_set = True
             return [self.initial_temperature, self.final_temperature, self.thermostat_coupling]
 
@@ -230,10 +229,10 @@ class Ensemble(Keyword):
 
         def set_parameters(self, initial_temperature, final_temperature, thermostat_coupling,
                            barostat_coupling, condition, pdict):
-            self.initial_temperature = cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
-            self.final_temperature = cond_assign(final_temperature, 0, op.gt, 'final_temperature')
-            self.thermostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
-            self.barostat_coupling = cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
+            self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+            self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
+            self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+            self.barostat_coupling = util.cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
 
             if condition == 'isotropic':
                 params = ['p_hydro', 'C_hydro']
@@ -276,12 +275,12 @@ class Ensemble(Keyword):
             self.parameters_set = False
 
         def set_parameters(self, temperature, thermostat_coupling, temperature_delta, source_group_id, sink_group_id):
-            self.temperature = cond_assign(temperature, 0, op.gt, 'temperature')
-            self.therostat_coupling = cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+            self.temperature = util.cond_assign(temperature, 0, op.gt, 'temperature')
+            self.therostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
                 raise ValueError(f"The magnitude of temperature_delta is too large.")
-            self.source_group_id = cond_assign_int(source_group_id, 0, op.ge, 'source_group_id')
-            self.sink_group_id = cond_assign_int(sink_group_id, 0, op.ge, 'sink_group_id')
+            self.source_group_id = util.cond_assign_int(source_group_id, 0, op.ge, 'source_group_id')
+            self.sink_group_id = util.cond_assign_int(sink_group_id, 0, op.ge, 'sink_group_id')
             if self.source_group_id == self.sink_group_id:
                 raise ValueError(f"The source and sink group cannot be the same.")
             self.parameters_set = True
@@ -315,7 +314,7 @@ class Fix(Keyword):
             group_id: The group id of the atoms to freeze.
         """
         super().__init__('fix', False)
-        self.group_id = cond_assign_int(group_id, 0, op.ge, 'group_id')
+        self.group_id = util.cond_assign_int(group_id, 0, op.ge, 'group_id')
         self._set_args([self.group_id])
 
 
@@ -341,7 +340,7 @@ class Deform(Keyword):
         self.deform_x = deform_x
         self.deform_y = deform_y
         self.deform_z = deform_z
-        self.strain_rate = cond_assign(strain_rate, 0, op.gt, 'strain_rate')
+        self.strain_rate = util.cond_assign(strain_rate, 0, op.gt, 'strain_rate')
         self._set_args([self.strain_rate, int(self.deform_x), int(self.deform_y), int(self.deform_z)])
 
 
@@ -357,7 +356,7 @@ class DumpThermo(Keyword):
             interval (int): Number of time steps between each dump of the thermodynamic data.
         """
         super().__init__('dump_thermo')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
 
 
@@ -376,7 +375,7 @@ class DumpPosition(Keyword):
             precision (str): Only 'single' or 'double' is accepted. The '%g' format is used if nothing specified.
         """
         super().__init__('dump_position')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
         self.precision = None
 
         options = list()
@@ -405,7 +404,7 @@ class DumpNetCDF(Keyword):
             precision (str): Only 'single' or 'double' is accepted. The default is 'double'.
         """
         super().__init__('dump_netcdf')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
 
         options = list()
         if precision:
@@ -429,7 +428,7 @@ class DumpRestart(Keyword):
             interval (int): Number of time steps between each dump of the restart data.
         """
         super().__init__('dump_restart')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
 
 
@@ -447,7 +446,7 @@ class DumpVelocity(Keyword):
             group_id (int): The group ID of the atoms to dump the velocity of.
         """
         super().__init__('dump_velocity')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
 
         options = list()
         if self.valid_group_options(grouping_method, group_id):
@@ -469,7 +468,7 @@ class DumpForce(Keyword):
             group_id (int): The group ID of the atoms to dump the force of.
         """
         super().__init__('dump_force')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
 
         options = list()
         if self.valid_group_options(grouping_method, group_id):
@@ -490,9 +489,9 @@ class DumpEXYZ(Keyword):
             has_force (bool): True to dump force data, False to not dump force data.
         """
         super().__init__('dump_exyz')
-        self.interval = cond_assign_int(interval, 0, op.gt, 'interval')
-        self.has_velocity = assign_bool(has_velocity, 'has_velocity')
-        self.has_force = assign_bool(has_force, 'has_force')
+        self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
+        self.has_velocity = util.assign_bool(has_velocity, 'has_velocity')
+        self.has_force = util.assign_bool(has_force, 'has_force')
         self._set_args([self.interval, int(self.has_velocity), int(self.has_force)])
 
 
@@ -517,17 +516,17 @@ class Compute(Keyword):
             jk (bool): True to output kinetic part of the heat current vector, False otherwise.
         """
         super().__init__('compute')
-        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
-        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
-        self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+        self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.output_interval = util.cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
         args = [self.grouping_method, self.sample_interval, self.output_interval]
 
-        self.temperature = assign_bool(temperature, 'temperature')
-        self.potential = assign_bool(potential, 'potential')
-        self.force = assign_bool(force, 'force')
-        self.virial = assign_bool(virial, 'virial')
-        self.jp = assign_bool(jp, 'jp')
-        self.jk = assign_bool(jk, 'jk')
+        self.temperature = util.assign_bool(temperature, 'temperature')
+        self.potential = util.assign_bool(potential, 'potential')
+        self.force = util.assign_bool(force, 'force')
+        self.virial = util.assign_bool(virial, 'virial')
+        self.jp = util.assign_bool(jp, 'jp')
+        self.jk = util.assign_bool(jk, 'jk')
 
         args.append('temperature') if self.temperature else None
         args.append('potential') if self.potential else None
@@ -559,15 +558,15 @@ class ComputeSHC(Keyword):
             group_id (int): The group ID of the atoms to calculate the spectral heat current of.
         """
         super().__init__('compute_shc')
-        sample_interval = cond_assign_int(sample_interval, 1, op.ge, 'sample_interval')
-        self.sample_interval = cond_assign_int(sample_interval, 10, op.le, 'sample_interval')
-        num_corr_steps = cond_assign_int(num_corr_steps, 100, op.ge, 'num_corr_steps')
-        self.num_corr_steps = cond_assign_int(num_corr_steps, 1000, op.le, 'num_corr_steps')
+        sample_interval = util.cond_assign_int(sample_interval, 1, op.ge, 'sample_interval')
+        self.sample_interval = util.cond_assign_int(sample_interval, 10, op.le, 'sample_interval')
+        num_corr_steps = util.cond_assign_int(num_corr_steps, 100, op.ge, 'num_corr_steps')
+        self.num_corr_steps = util.cond_assign_int(num_corr_steps, 1000, op.le, 'num_corr_steps')
         if not (transport_direction in ['x', 'y', 'z']):
             raise ValueError("Only 'x', 'y', and 'z' are accepted for the 'transport_direction' parameter.")
         self.transport_direction = transport_direction
-        self.num_omega = cond_assign_int(num_omega, 0, op.ge, 'num_omega')
-        self.max_omega = cond_assign(max_omega, 0, op.gt, 'max_omega')
+        self.num_omega = util.cond_assign_int(num_omega, 0, op.ge, 'num_omega')
+        self.max_omega = util.cond_assign(max_omega, 0, op.gt, 'max_omega')
 
         options = list()
         if self.valid_group_options(grouping_method, group_id):
@@ -599,14 +598,14 @@ class ComputeDOS(Keyword):
             group_id (int): The group ID of the atoms to calculate the spectral heat current of.
         """
         super().__init__('compute_dos')
-        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
-        self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
-        self.max_omega = cond_assign(max_omega, 0, op.gt, 'max_omega')
+        self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.num_corr_steps = util.cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
+        self.max_omega = util.cond_assign(max_omega, 0, op.gt, 'max_omega')
 
         options = list()
         self.num_dos_points = self.num_corr_steps
         if num_dos_points:
-            self.num_dos_points = cond_assign_int(num_dos_points, 0, op.gt, 'num_dos_points')
+            self.num_dos_points = util.cond_assign_int(num_dos_points, 0, op.gt, 'num_dos_points')
             options.extend(['num_dos_points', self.num_dos_points])
 
         if self.valid_group_options(grouping_method, group_id):
@@ -631,8 +630,8 @@ class ComputeSDC(Keyword):
             group_id (int): The group ID of the atoms to calculate the spectral heat current of.
         """
         super().__init__('compute_sdc')
-        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
-        self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
+        self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.num_corr_steps = util.cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
 
         options = list()
         if self.valid_group_options(grouping_method, group_id):
@@ -656,9 +655,9 @@ class ComputeHAC(Keyword):
             output_interval (int): The output interval of the HAC and RTC data.
         """
         super().__init__('compute_hac')
-        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
-        self.num_corr_steps = cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
-        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.num_corr_steps = util.cond_assign_int(num_corr_steps, 0, op.gt, 'num_corr_steps')
+        self.output_interval = util.cond_assign_int(output_interval, 0, op.gt, 'output_interval')
 
         self._set_args([self.sample_interval, self.num_corr_steps, self.output_interval])
 
@@ -678,10 +677,10 @@ class ComputeHNEMD(Keyword):
             driving_force_z (float): The z-component of the driving force. [Angstroms^-1]
         """
         super().__init__('compute_hnemd')
-        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
-        self.driving_force_x = assign_number(driving_force_x, 'driving_force_x')
-        self.driving_force_y = assign_number(driving_force_y, 'driving_force_y')
-        self.driving_force_z = assign_number(driving_force_z, 'driving_force_z')
+        self.output_interval = util.cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        self.driving_force_x = util.assign_number(driving_force_x, 'driving_force_x')
+        self.driving_force_y = util.assign_number(driving_force_y, 'driving_force_y')
+        self.driving_force_z = util.assign_number(driving_force_z, 'driving_force_z')
 
         self._set_args([self.output_interval, self.driving_force_x, self.driving_force_y, self.driving_force_z])
 
@@ -704,16 +703,16 @@ class ComputeGKMA(Keyword):
                 bin_option == 'f_bin_size', this describes bin size in THz.
         """
         super().__init__('compute_gkma')
-        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
-        self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
-        self.last_mode = cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
+        self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.first_mode = util.cond_assign_int(first_mode, 1, op.ge, 'first_mode')
+        self.last_mode = util.cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
 
         if bin_option == 'bin_size':
             self.bin_option = bin_option
-            self.size = cond_assign_int(size, 0, op.gt, 'size')
+            self.size = util.cond_assign_int(size, 0, op.gt, 'size')
         elif bin_option == 'f_bin_size':
             self.bin_option = bin_option
-            self.size = cond_assign(size, 0, op.gt, 'size')
+            self.size = util.cond_assign(size, 0, op.gt, 'size')
         else:
             raise ValueError("The bin_option parameter must be 'bin_size' or 'f_bin_size'.")
 
@@ -745,24 +744,24 @@ class ComputeHNEMA(Keyword):
                 bin_option == 'f_bin_size', this describes bin size in THz.
         """
         super().__init__('compute_hnema')
-        self.sample_interval = cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
-        self.output_interval = cond_assign_int(output_interval, 0, op.gt, 'output_interval')
+        self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
+        self.output_interval = util.cond_assign_int(output_interval, 0, op.gt, 'output_interval')
         if not (self.output_interval % self.sample_interval == 0):
             raise ValueError("The sample_interval must divide the output_interval an integer number of times.")
 
-        self.driving_force_x = assign_number(driving_force_x, 'driving_force_x')
-        self.driving_force_y = assign_number(driving_force_y, 'driving_force_y')
-        self.driving_force_z = assign_number(driving_force_z, 'driving_force_z')
+        self.driving_force_x = util.assign_number(driving_force_x, 'driving_force_x')
+        self.driving_force_y = util.assign_number(driving_force_y, 'driving_force_y')
+        self.driving_force_z = util.assign_number(driving_force_z, 'driving_force_z')
 
-        self.first_mode = cond_assign_int(first_mode, 1, op.ge, 'first_mode')
-        self.last_mode = cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
+        self.first_mode = util.cond_assign_int(first_mode, 1, op.ge, 'first_mode')
+        self.last_mode = util.cond_assign_int(last_mode, self.first_mode, op.ge, 'last_mode')
 
         if bin_option == 'bin_size':
             self.bin_option = bin_option
-            self.size = cond_assign_int(size, 0, op.gt, 'size')
+            self.size = util.cond_assign_int(size, 0, op.gt, 'size')
         elif bin_option == 'f_bin_size':
             self.bin_option = bin_option
-            self.size = cond_assign(size, 0, op.gt, 'size')
+            self.size = util.cond_assign(size, 0, op.gt, 'size')
         else:
             raise ValueError("The bin_option parameter must be 'bin_size' or 'f_bin_size'.")
 
@@ -785,7 +784,7 @@ class RunKeyword(Keyword):
             number_of_steps (int): Number of steps to run.
         """
         super().__init__('run', take_immediate_action=True)
-        self.number_of_steps = cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
+        self.number_of_steps = util.cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
         self._set_args([self.number_of_steps])
 
 
@@ -803,8 +802,8 @@ class Minimize(Keyword):
             method (str): Only 'sd' is supported at this time.
         """
         super().__init__('minimize', take_immediate_action=True)
-        self.force_tolerance = assign_number(force_tolerance, 'force_tolerance')
-        self.max_iterations = cond_assign_int(max_iterations, 0, op.gt, 'max_iterations')
+        self.force_tolerance = util.assign_number(force_tolerance, 'force_tolerance')
+        self.max_iterations = util.cond_assign_int(max_iterations, 0, op.gt, 'max_iterations')
         if not method == 'sd':
             raise ValueError("Only the steepest descent method is implemented. The 'method' parameter must be 'sd'.")
         self.method = method
@@ -825,9 +824,9 @@ class ComputeCohesive(Keyword):
             num_points (int): Number of points sampled uniformly from e1 to e1.
         """
         super().__init__('compute_cohesive', take_immediate_action=True)
-        self.start_factor = cond_assign(start_factor, 0, op.gt, 'start_factor')
-        self.end_factor = cond_assign(end_factor, self.start_factor, op.gt, 'end_factor')
-        self.num_points = cond_assign_int(num_points, 2, op.ge, 'num_points')
+        self.start_factor = util.cond_assign(start_factor, 0, op.gt, 'start_factor')
+        self.end_factor = util.cond_assign(end_factor, self.start_factor, op.gt, 'end_factor')
+        self.num_points = util.cond_assign_int(num_points, 2, op.ge, 'num_points')
 
         self._set_args([self.start_factor, self.end_factor, self.num_points])
 
@@ -845,8 +844,8 @@ class ComputeElastic(Keyword):
             symmetry_type (str): Currently only 'cubic' supported.
         """
         super().__init__('compute_elastic', take_immediate_action=True)
-        strain_value = cond_assign(strain_value, 0, op.gt, 'strain_value')
-        self.strain_value = cond_assign(strain_value, 0.1, op.le, 'strain_value')
+        strain_value = util.cond_assign(strain_value, 0, op.gt, 'strain_value')
+        self.strain_value = util.cond_assign(strain_value, 0.1, op.le, 'strain_value')
         if not symmetry_type == 'cubic':
             raise ValueError("The symmetry_type parameter must be 'cubic' at this time.")
         self.symmetry_type = symmetry_type
@@ -872,8 +871,8 @@ class ComputePhonon(Keyword):
                 method. [Angstroms]
         """
         super().__init__('compute_phonon', take_immediate_action=True)
-        self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
-        self.displacement = cond_assign(displacement, 0, op.gt, 'displacement')
+        self.cutoff = util.cond_assign(cutoff, 0, op.gt, 'cutoff')
+        self.displacement = util.cond_assign(displacement, 0, op.gt, 'displacement')
 
         self._set_args([self.cutoff, self.displacement])
 
@@ -908,7 +907,7 @@ class Potential(Keyword):
                 directory.
         """
         super().__init__('potential', take_immediate_action=True)
-        self.potential_path = filename if not directory else get_path(directory, filename)
+        self.potential_path = filename if not directory else util.get_path(directory, filename)
         if not os.path.exists(self.potential_path):
             raise ValueError("The path to the potential does not exist.")
         with open(self.potential_path, 'r') as f:
@@ -919,16 +918,16 @@ class Potential(Keyword):
         if potential_type not in Potential.supported_potentials:
             raise ValueError("Potential file does not contain a supported potential.")
         self.potential_type = potential_type
-        self.num_types = cond_assign_int(num_types, 0, op.gt, 'num_types')
+        self.num_types = util.cond_assign_int(num_types, 0, op.gt, 'num_types')
 
         options = list()
         if not self.potential_type == "lj":
             if not symbols:
                 raise ValueError("A list of symbols must be provided for non-LJ potentials.")
-            self.symbols = check_symbols(symbols)
+            self.symbols = util.check_symbols(symbols)
         else:
             if grouping_method:
-                self.grouping_method = cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+                self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
                 options.append(self.grouping_method)
 
         self._set_args([self.potential_path], optional_args=options)
@@ -936,7 +935,7 @@ class Potential(Keyword):
     def update_symbols(self, symbols):
         if not len(symbols) == self.num_types:
             raise ValueError("Number of symbols does not match the number of types expected by the potential.")
-        self.symbols = check_symbols(symbols)
+        self.symbols = util.check_symbols(symbols)
 
     def set_types(self, types: List[int]) -> None:
         if self.potential_type == "lj":
