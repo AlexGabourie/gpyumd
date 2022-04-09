@@ -1,6 +1,8 @@
 import copy
 import math
 import os
+from typing import List
+
 from ase import Atoms
 from gpyumd.atoms import GpumdAtoms
 from gpyumd.keyword import Ensemble, Keyword, RunKeyword, Potential
@@ -14,8 +16,6 @@ __email__ = "agabourie47@gmail.com"
 # TODO add type hinting -> should simplify the docstrings by removing the types
 # TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
-
-    # TODO add potentials --> not to be used as a standard keyword
 
     def __init__(self, gpumd_atoms, directory=None):
         """
@@ -32,27 +32,32 @@ class Simulation:
         self.static_calc = None
         if not isinstance(gpumd_atoms, Atoms) or not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("The 'atoms' parameter must be of ase.Atoms or GpumdAtoms type.")
-        self.atoms = GpumdAtoms(gpumd_atoms)
-        self.potentials = list()
+        self.atoms = copy.deepcopy(GpumdAtoms(gpumd_atoms))
+        self.potentials = None
 
     def create_simulation(self, copy_potentials=False):
         """
         Generates the required files for the gpumd simulation
         :return:
         """
+        self.validate_potentials()
         self.validate_runs()
-        with open(os.path.join(self.directory, 'run.in'), 'w') as runfile:
-            # TODO write potentials
+        with open(os.path.join(self.directory, 'run.in'), 'w') as run_file:
+            potential_lines = self.potentials.get_output()
+            for line in potential_lines:
+                run_file.write(f"{line}\n")
             if self.static_calc:
                 static_calc_lines = self.static_calc.get_output()
                 for line in static_calc_lines:
-                    runfile.write(f"{line}\n")
+                    run_file.write(f"{line}\n")
             for run in self.runs:
-                runlines = run.get_output()
-                for line in runlines:
-                    runfile.write(f"{line}\n")
+                run_lines = run.get_output()
+                for line in run_lines:
+                    run_file.write(f"{line}\n")
 
         self.atoms.write_gpumd()
+        if copy_potentials:
+            pass
         # TODO copy potentials (if selected)
 
     def add_run(self, number_of_steps=None):
@@ -75,6 +80,11 @@ class Simulation:
             dt_in_fs = self.runs[-2].get_dt_in_fs()
         self.runs[-1].set_dt_in_fs(dt_in_fs)
         return current_run
+
+    def validate_potentials(self) -> None:
+        if self.potentials is None:
+            raise ValueError("No potentials set.")
+        self.potentials.finalize_types()
 
     def validate_runs(self):
         first_run_checked = False
@@ -126,7 +136,7 @@ class Potentials:
 
         self.potentials.append(potential)
 
-    def finalize_types(self):
+    def finalize_types(self) -> None:
         """
         Sets the type dict for the GpumdAtoms object based on the potentials that have been added.
         """
@@ -138,6 +148,18 @@ class Potentials:
                 for symbol in potential.symbols:
                     types.append(self.type_dict[symbol])
                 potential.set_types(types)
+
+    def get_output(self) -> List[str]:
+        output = list()
+        lj = None
+        for potential in self.potentials:
+            if potential.potential_type == 'lj':
+                lj = potential.get_entry()
+            else:
+                output.append(potential.get_entry())
+        if lj:  # 'lj' potential is last
+            output.append(lj)
+        return output
 
 
 class StaticCalc:
