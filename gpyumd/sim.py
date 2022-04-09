@@ -17,15 +17,13 @@ __email__ = "agabourie47@gmail.com"
 # TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
 
-    def __init__(self, gpumd_atoms, directory=None):
+    def __init__(self, gpumd_atoms: GpumdAtoms, directory: str = None):
         """
         Stores the relevant information for a full 'gpumd' executable simulation.
 
         Args:
-            gpumd_atoms: GpumdAtoms (or ase.Atoms)
-                Final structure to be used with the GPUMD simulation.
-            directory: string
-                Directory of the simulation.
+            gpumd_atoms: Final structure to be used with the GPUMD simulation.
+            directory: Directory of the simulation.
         """
         self.directory = create_directory(directory) if directory else os.getcwd()
         self.runs = list()
@@ -35,10 +33,12 @@ class Simulation:
         self.atoms = copy.deepcopy(GpumdAtoms(gpumd_atoms))
         self.potentials = None
 
-    def create_simulation(self, copy_potentials=False):
+    def create_simulation(self, copy_potentials: bool = False) -> None:
         """
         Generates the required files for the gpumd simulation
-        :return:
+
+        Args:
+            copy_potentials: Whether or not to copy potentials to the simulation directory
         """
         self.validate_potentials()
         self.validate_runs()
@@ -60,12 +60,12 @@ class Simulation:
             pass
         # TODO copy potentials (if selected)
 
-    def add_run(self, number_of_steps=None):
+    def add_run(self, number_of_steps: int = None) -> "Run":
         """
         Adds a new run to a simulation.
 
         Args:
-            number_of_steps:
+            number_of_steps: number of steps to run
 
         Returns:
             A reference to the new run in the simulation.
@@ -86,7 +86,7 @@ class Simulation:
             raise ValueError("No potentials set.")
         self.potentials.finalize_types()
 
-    def validate_runs(self):
+    def validate_runs(self) -> None:
         first_run_checked = False
         for run in self.runs:
             if not first_run_checked:  # denotes first run
@@ -95,12 +95,12 @@ class Simulation:
             # TODO add try/catch here?
             run.validate_run()
 
-    def add_static_calc(self, keyword):
+    def add_static_calc(self, keyword: Keyword) -> None:
         if not self.static_calc:
             self.static_calc = StaticCalc()
         self.static_calc.add_calc(keyword)
 
-    def add_potential(self, potential):
+    def add_potential(self, potential: Potential) -> None:
         if not self.potentials:
             self.potentials = Potentials(self.atoms)
         self.potentials.add_potential(potential)
@@ -117,7 +117,7 @@ class Potentials:
         self.gpumd_atoms = gpumd_atoms
         self.type_dict = None
 
-    def add_potential(self, potential):
+    def add_potential(self, potential: Potential) -> None:
         if not isinstance(potential, Potential):
             raise ValueError("Must add a Potential keyword to the potentials list.")
 
@@ -179,7 +179,7 @@ class StaticCalc:
                              "are allowed.")
         self.keywords[keyword.keyword] = keyword
 
-    def get_output(self, minimize_first=True):
+    def get_output(self, minimize_first: bool = True) -> List[str]:
         keywords = copy.deepcopy(self.keywords)
         output = list()
         if minimize_first and 'minimize' in keywords:
@@ -188,20 +188,19 @@ class StaticCalc:
         for key in keywords:
             keyword = keywords.pop(key, None)
             output.append(keyword.get_entry())
+        return output
 
 
 # TODO enable atoms to be updated and then have all the runs be re-validated
 # TODO enable multiple static computations in a single run
 class Run:
 
-    def __init__(self, gpumd_atoms, number_of_steps=None):
+    def __init__(self, gpumd_atoms: GpumdAtoms, number_of_steps: int = None):
         """
 
         Args:
-            gpumd_atoms: GpumdAtoms
-
-            number_of_steps: int
-                Number of steps to be run in the Run.
+            gpumd_atoms: Atoms for the simulation
+            number_of_steps: Number of steps to be run in the Run.
         """
         if not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("gpumd_atoms must be of the GpumdAtoms type.")
@@ -213,7 +212,7 @@ class Run:
             self.run_keyword = RunKeyword(number_of_steps=number_of_steps)
         self.first_run = False
 
-    def get_output(self):
+    def get_output(self) -> List[str]:
         keywords = copy.deepcopy(self.keywords)
         output = list()
         if 'time_step' in keywords:
@@ -222,32 +221,27 @@ class Run:
         for key in keywords:
             keyword = keywords.pop(key, None)
             output.append(keyword.get_entry())
+        return output
 
-    def set_first_run(self, first_run=True):
+    def set_first_run(self, first_run: bool = True) -> None:
         self.first_run = first_run
 
-    def set_dt_in_fs(self, dt_in_fs=None):
+    def set_dt_in_fs(self, dt_in_fs: float = None) -> None:
         if not dt_in_fs:
             dt_in_fs = 1  # 1 fs default
         self.dt_in_fs = dt_in_fs
 
-    def get_dt_in_fs(self):
+    def get_dt_in_fs(self) -> float:
         return self.dt_in_fs
 
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
-    def add_keyword(self, keyword, final_check=False):
+    def add_keyword(self, keyword: Keyword, final_check: bool = False) -> None:
         """
         Adds a keyword object to the run. Verifies that the keyword is valid (to the extent that it can be initially).
 
         Args:
-            keyword: Keyword
-                The keyword to add to the run.
-
-            final_check: bool
-                Use only if you know what you're doing. It is normally used to validate the run when finalized.
-
-        Returns:
-
+            keyword: The keyword to add to the run.
+            final_check: Use only if you know what you're doing. It is normally used to validate the run when finalized.
         """
         if not issubclass(type(keyword), Keyword):
             raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")
@@ -261,10 +255,10 @@ class Run:
             print(f"The {keyword.keyword} keyword can only be added via the add_potential function in the Sim class.")
             return
 
-        self.validate_keyword(keyword, final_check)
+        self._validate_keyword(keyword, final_check)
         self.keywords[keyword.keyword] = keyword
 
-    def validate_keyword(self, keyword, final_check=False):
+    def _validate_keyword(self, keyword, final_check: bool = False) -> None:
         if keyword.keyword == 'time_step':
             if 'time_step' in self.keywords:
                 print("Warning: only one 'time_step' allowed per Run. Previous will be overwritten.")
@@ -348,9 +342,9 @@ class Run:
                 if 1e3 / (self.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
                     raise ValueError("Sampling rate is less than the Nyquist rate.")
 
-    def validate_run(self):
+    def validate_run(self) -> None:
         for key in self.keywords.keys():
-            self.validate_keyword(self.keywords[key], final_check=True)
+            self._validate_keyword(self.keywords[key], final_check=True)
 
         if 'run' not in self.keywords:
             raise ValueError(f"No 'run' keyword provided for this run.")
