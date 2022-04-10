@@ -5,6 +5,8 @@ import copy
 import multiprocessing as mp
 from functools import partial
 from collections import deque
+from typing import BinaryIO, List
+
 from gpyumd.util import get_path, get_direction, check_list, check_range
 
 __author__ = "Alexander Gabourie"
@@ -37,23 +39,18 @@ def __process_sample(nbins, i):
     return np.array(out).reshape((nbins,5))
 
 
-def tail(f, nlines, block_size=32768):
+def tail(file_handle: BinaryIO, nlines: int, block_size: int = 32768) -> List[bytes]:
     """
     Reads the last nlines of a file.
 
     Args:
-        f (filehandle):
-            File handle of file to be read
-
-        nlines (int):
-            Number of lines to be read from end of file
-
-        block_size (int):
-            Size of block (in bytes) to be read per read operation.
-            Performance depend on this parameter and file size.
+        file_handle: File handle of file to be read
+        nlines: Number of lines to be read from end of file
+        block_size: Size of block (in bytes) to be read per read operation. Performance depends on this parameter and
+            file size.
 
     Returns:
-        list: List of ordered final nlines of file
+        final nlines of file
 
     Additional Information:
     Since GPUMD output files are mostly append-only, this becomes
@@ -66,26 +63,25 @@ def tail(f, nlines, block_size=32768):
     final m number of runs of the simulation
     """
     # block_size is in bytes (must decode to string)
-    f.seek(0, 2)
-    bytes_remaining = f.tell()
+    file_handle.seek(0, 2)
+    bytes_remaining = file_handle.tell()
     idx = -block_size
     blocks = list()
     # Make no assumptions about line length
     lines_left = nlines
-    eof = False
+    end_of_file = False
     first = True
-    num_lines = 0
 
     # block_size is smaller than file
     if block_size <= bytes_remaining:
-        while lines_left > 0 and not eof:
+        while lines_left > 0 and not end_of_file:
             if bytes_remaining > block_size:
-                f.seek(idx, 2)
-                blocks.append(f.read(block_size))
+                file_handle.seek(idx, 2)
+                blocks.append(file_handle.read(block_size))
             else:  # if reached end of file
-                f.seek(0, 0)
-                blocks.append(f.read(bytes_remaining))
-                eof = True
+                file_handle.seek(0, 0)
+                blocks.append(file_handle.read(bytes_remaining))
+                end_of_file = True
 
             idx -= block_size
             bytes_remaining -= block_size
@@ -96,8 +92,8 @@ def tail(f, nlines, block_size=32768):
             else:
                 lines_left -= num_lines
 
-            # since whitespace removed from eof, must compare to 1 here
-            if eof and lines_left > 1:
+            # since whitespace removed from end_of_file, must compare to 1 here
+            if end_of_file and lines_left > 1:
                 raise ValueError("More lines requested than exist.")
 
         # Corrects for reading too many lines with large buffer
@@ -106,8 +102,8 @@ def tail(f, nlines, block_size=32768):
             blocks[-1] = blocks[-1].split(b'\n', skip)[skip]
         text = b''.join(reversed(blocks)).strip()
     else:  # block_size is bigger than file
-        f.seek(0, 0)
-        block = f.read()
+        file_handle.seek(0, 0)
+        block = file_handle.read()
         num_lines = block.count(b'\n')
         if num_lines < nlines:
             raise ValueError("More lines requested than exist.")
