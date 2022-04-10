@@ -1,19 +1,18 @@
 import copy
 import math
 import os
+import shutil
 from typing import List
 
 from ase import Atoms
 from gpyumd.atoms import GpumdAtoms
 from gpyumd.keyword import Ensemble, Keyword, RunKeyword, Potential
-from gpyumd.util import create_directory, check_symbols
+import gpyumd.util as util
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-# TODO import modules only, not functions from  modules. This will make the code much more readable
-# TODO add type hinting -> should simplify the docstrings by removing the types
 # TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
 
@@ -25,7 +24,7 @@ class Simulation:
             gpumd_atoms: Final structure to be used with the GPUMD simulation.
             directory: Directory of the simulation.
         """
-        self.directory = create_directory(directory) if directory else os.getcwd()
+        self.directory = util.create_directory(directory) if directory else os.getcwd()
         self.runs = list()
         self.static_calc = None
         if not isinstance(gpumd_atoms, Atoms) or not isinstance(gpumd_atoms, GpumdAtoms):
@@ -57,8 +56,7 @@ class Simulation:
 
         self.atoms.write_gpumd()
         if copy_potentials:
-            pass
-        # TODO copy potentials (if selected)
+            self.potentials.copy_potentials(self.directory)
 
     def add_run(self, number_of_steps: int = None) -> "Run":
         """
@@ -127,7 +125,7 @@ class Potentials:
                     raise ValueError(f"The atomic symbol {symbol} has already been accounted for in a potential.")
                 if symbol not in set(self.gpumd_atoms.get_chemical_symbols()):
                     raise ValueError(f"The atomic symbol {symbol} is not part of the GpumdAtoms object.")
-                check_symbols([symbol])
+                util.check_symbols([symbol])
                 self.type_dict[symbol] = len(self.type_dict)
 
         elif potential.grouping_method and (self.gpumd_atoms.num_group_methods - 1) < potential.grouping_method:
@@ -160,6 +158,16 @@ class Potentials:
         if lj:  # 'lj' potential is last
             output.append(lj)
         return output
+
+    def copy_potentials(self, directory: str) -> None:
+        """
+        Copies all of the potentials to the selected directory.
+
+        Args:
+            directory: Directory to copy potentials to
+        """
+        for potential in self.potentials:
+            shutil.copy(potential.potential_path, util.get_path(directory, potential.filename))
 
 
 class StaticCalc:

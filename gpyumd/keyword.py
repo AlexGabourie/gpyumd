@@ -895,6 +895,9 @@ class Potential(Keyword):
                 in run directory.
         """
         super().__init__('potential', take_immediate_action=True)
+        if not isinstance(filename, str):
+            raise ValueError("filename must be a string.")
+        self.filename = filename
         self.potential_path = filename if not directory else util.get_path(directory, filename)
         if not os.path.exists(self.potential_path):
             raise ValueError("The path to the potential does not exist.")
