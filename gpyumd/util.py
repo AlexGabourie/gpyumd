@@ -2,7 +2,7 @@ import re
 import os
 import numbers
 from ase import Atom
-from typing import List
+from typing import List, BinaryIO
 
 
 __author__ = "Alexander Gabourie"
@@ -100,7 +100,7 @@ def get_path(directory: str, filename: str):
     return os.path.join(directory, filename)
 
 
-def check_list(data: List[any], varname: str = None, dtype: type = None) -> List[any]:
+def check_list(data: List[any], varname: str, dtype: type) -> List[any]:
     """
     Checks if data is a list of dtype or turns a variable of dtype into a list
 
@@ -112,14 +112,13 @@ def check_list(data: List[any], varname: str = None, dtype: type = None) -> List
     Returns:
         A list of dtype
     """
-    if type(data) == dtype:
+    if isinstance(data, dtype):
         return [data]
 
-    if type(data) == list:
+    if isinstance(data, list):
         for elem in data:
-            if not type(elem) == dtype:
-                if varname:
-                    raise ValueError('All entries for {} must be {}.'.format(str(varname), str(dtype)))
+            if not isinstance(elem, dtype):
+                raise ValueError('All entries for {} must be {}.'.format(str(varname), str(dtype)))
         return data
 
     raise ValueError('{} is not the correct type.'.format(str(varname)))
@@ -139,3 +138,76 @@ def check_range(npoints: List[int], maxpoints: int) -> None:
     for points in npoints:
         if points < 1:
             raise ValueError("Only strictly positive numbers are allowed.")
+
+
+def tail(file_handle: BinaryIO, nlines: int, block_size: int = 32768) -> List[bytes]:
+    """
+    Reads the last nlines of a file.
+
+    Args:
+        file_handle: File handle of file to be read
+        nlines: Number of lines to be read from end of file
+        block_size: Size of block (in bytes) to be read per read operation. Performance depends on this parameter and
+            file size.
+
+    Returns:
+        final nlines of file
+
+    Additional Information:
+    Since GPUMD output files are mostly append-only, this becomes
+    useful when a simulation prematurely ends (i.e. cluster preempts
+    run, but simulation restarts elsewhere). In this case, it is not
+    necessary to clean the directory before re-running. File outputs
+    will be too long (so there still is a storage concern), but the
+    proper data can be extracted from the end of file.
+    This may also be useful if you want to only grab data from the
+    final m number of runs of the simulation
+    """
+    # block_size is in bytes (must decode to string)
+    file_handle.seek(0, 2)
+    bytes_remaining = file_handle.tell()
+    idx = -block_size
+    blocks = list()
+    # Make no assumptions about line length
+    lines_left = nlines
+    end_of_file = False
+    first = True
+
+    # block_size is smaller than file
+    if block_size <= bytes_remaining:
+        while lines_left > 0 and not end_of_file:
+            if bytes_remaining > block_size:
+                file_handle.seek(idx, 2)
+                blocks.append(file_handle.read(block_size))
+            else:  # if reached end of file
+                file_handle.seek(0, 0)
+                blocks.append(file_handle.read(bytes_remaining))
+                end_of_file = True
+
+            idx -= block_size
+            bytes_remaining -= block_size
+            num_lines = blocks[-1].count(b'\n')
+            if first:
+                lines_left -= num_lines - 1
+                first = False
+            else:
+                lines_left -= num_lines
+
+            # since whitespace removed from end_of_file, must compare to 1 here
+            if end_of_file and lines_left > 1:
+                raise ValueError("More lines requested than exist.")
+
+        # Corrects for reading too many lines with large buffer
+        if bytes_remaining > 0:
+            skip = 1 + abs(lines_left)
+            blocks[-1] = blocks[-1].split(b'\n', skip)[skip]
+        text = b''.join(reversed(blocks)).strip()
+    else:  # block_size is bigger than file
+        file_handle.seek(0, 0)
+        block = file_handle.read()
+        num_lines = block.count(b'\n')
+        if num_lines < nlines:
+            raise ValueError("More lines requested than exist.")
+        skip = num_lines - nlines
+        text = block.split(b'\n', skip)[skip].strip()
+    return text.split(b'\n')
