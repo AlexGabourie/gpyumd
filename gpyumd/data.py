@@ -420,19 +420,18 @@ def read_modal_analysis_file(nbins: int, nsamples: int, datapath: str, ndiv: int
         3D array with of data with dimension (nbins, nsamples, 5). Note: ndiv will change nbins.
     """
 
-    def process_sample(num_bins: int, sample_num: int) -> np.ndarray:
+    def process_sample(sample_num: int) -> np.ndarray:
         """
         Args:
-            num_bins: Number of bins used in the GPUMD simulation
             sample_num: The current sample from a run to analyze
 
         Returns:
             A 2D array of each bin and output for a sample
         """
         out = list()
-        for bin_num in range(num_bins):
-            out += [float(x) for x in malines[bin_num + sample_num * num_bins].split()]
-        return np.array(out).reshape((num_bins, 5))
+        for bin_num in range(nbins):
+            out += [float(x) for x in malines[bin_num + sample_num * nbins].split()]
+        return np.array(out).reshape((nbins, 5))
 
     # Get full set of results
     datalines = nbins * nsamples
@@ -446,9 +445,8 @@ def read_modal_analysis_file(nbins: int, nsamples: int, datapath: str, ndiv: int
         if not ncore:
             ncore = mp.cpu_count()
 
-        func = partial(process_sample, nbins)
         pool = mp.Pool(ncore)
-        data = np.array(pool.map(func, range(nsamples)), dtype='float32').transpose((1, 0, 2))
+        data = np.array(pool.map(process_sample, range(nsamples)), dtype='float32').transpose((1, 0, 2))
         pool.close()
 
     else:  # Faster if single thread
