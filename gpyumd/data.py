@@ -112,8 +112,8 @@ def load_compute(quantities: List[str], directory: str = None, filename: str = '
        **key**,temperature,U,F,W,jp,jk,Ein,Eout
        **units**,K,eV,|c1|,eV,|c2|,|c2|,eV,eV
 
-   .. |c1| replace:: eVA\ :sup:`-1`
-   .. |c2| replace:: eV\ :sup:`3/2` amu\ :sup:`-1/2`
+    .. |c1| replace:: eVA\ :sup:`-1`
+    .. |c2| replace:: eV\ :sup:`3/2` amu\ :sup:`-1/2`
     """
     quantities = util.check_list(quantities, varname='quantities', dtype=str)
     compute_path = util.get_path(directory, filename)
@@ -613,45 +613,37 @@ def load_kappamode(nbins: int,
     return out if return_data else None
 
 
-def load_saved_kappamode(filename='kappamode.npy', directory=None):
+def load_saved_kappamode(filename: str = "kappamode.npy", directory: str = None):
     """
     Loads data saved by the 'load_kappamode' function and returns the original dictionary.
 
     Args:
-        filename (str):
-            Name of the file to load
-
-        directory (str):
-            Directory the data file is located in
+        filename: Name of the file to load
+        directory: Directory the data file is located in
 
     Returns:
-        dict: Dictionary with all modal thermal conductivities previously requested
-
+        Dictionary with all modal thermal conductivities previously requested
     """
     path = util.get_path(directory, filename)
     return np.load(path, allow_pickle=True).item()
 
 
-def load_saved_heatmode(filename='heatmode.npy', directory=None):
+def load_saved_heatmode(filename: str = "heatmode.npy", directory: str = None):
     """
     Loads data saved by the 'load_heatmode' or 'get_gkma_kappa' function and returns the original dictionary.
 
     Args:
-        filename (str):
-            Name of the file to load
-
-        directory (str):
-            Directory the data file is located in
+        filename: Name of the file to load
+        directory: Directory the data file is located in
 
     Returns:
-        dict: Dictionary with all modal heat flux previously requested
-
+        Dictionary with all modal heat flux previously requested
     """
-
     path = util.get_path(directory, filename)
     return np.load(path, allow_pickle=True).item()
 
 
+# TODO move this function and reduce_frequency_info?
 def get_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", directory: str = None) -> dict:
     """
     Gathers eigen-frequency information from the eigenvector file and sorts
