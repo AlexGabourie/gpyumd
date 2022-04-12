@@ -17,70 +17,6 @@ __email__ = "agabourie47@gmail.com"
 #########################################
 
 
-def __process_sample(nbins, i):
-    """
-    A helper function for the multiprocessing of kappamode.out files
-
-    Args:
-        nbins (int):
-            Number of bins used in the GPUMD simulation
-
-        i (int):
-            The current sample from a run to analyze
-
-    Returns:
-        np.ndarray: A 2D array of each bin and output for a sample
-
-
-    """
-    out = list()
-    for j in range(nbins):
-        out += [float(x) for x in malines[j + i * nbins].split()]
-    return np.array(out).reshape((nbins,5))
-
-
-def __modal_analysis_read(nbins, nsamples, datapath,
-                          ndiv, multiprocessing, ncore, block_size):
-
-    global malines
-    # Get full set of results
-    datalines = nbins * nsamples
-    with open(datapath, 'rb') as f:
-        if multiprocessing:
-            malines = util.tail(f, datalines, block_size=block_size)
-        else:
-            malines = deque(util.tail(f, datalines, block_size=block_size))
-
-    if multiprocessing:  # TODO Improve memory efficiency of multiprocessing
-        if not ncore:
-            ncore = mp.cpu_count()
-
-        func = partial(__process_sample, nbins)
-        pool = mp.Pool(ncore)
-        data = np.array(pool.map(func, range(nsamples)), dtype='float32').transpose((1, 0, 2))
-        pool.close()
-
-    else:  # Faster if single thread
-        data = np.zeros((nbins, nsamples, 5), dtype='float32')
-        for j in range(nsamples):
-            for i in range(nbins):
-                measurements = malines.popleft().split()
-                data[i, j, 0] = float(measurements[0])
-                data[i, j, 1] = float(measurements[1])
-                data[i, j, 2] = float(measurements[2])
-                data[i, j, 3] = float(measurements[3])
-                data[i, j, 4] = float(measurements[4])
-
-    del malines
-    if ndiv:
-        nbins = int(np.ceil(data.shape[0] / ndiv))  # overwrite nbins
-        npad = nbins * ndiv - data.shape[0]
-        data = np.pad(data, [(0, npad), (0, 0), (0, 0)])
-        data = np.sum(data.reshape((-1, ndiv, data.shape[1], data.shape[2])), axis=1)
-
-    return data
-
-
 def split_data_by_runs(points_per_run: List[int], data, labels: List[str]):
     start = 0
     out = dict()
@@ -242,224 +178,6 @@ def load_thermo(filename: str = "thermo.out", directory: str = None) -> Dict[str
         out[labels[i]] = data[i].to_numpy(dtype='float')
 
     return out
-
-
-def load_heatmode(nbins, nsamples, directory=None,
-                  inputfile='heatmode.out', directions='xyz',
-                  outputfile='heatmode.npy', ndiv=None, save=False,
-                  multiprocessing=False, ncore=None, block_size=65536, return_data=True):
-    """
-    Loads data from heatmode.out GPUMD file. Option to save as binary file for fast re-load later.
-    WARNING: If using multiprocessing, memory usage may be significantly larger than file size
-
-    Args:
-        nbins (int):
-            Number of bins used during the GPUMD simulation
-
-        nsamples (int):
-            Number of times heat flux was sampled with GKMA during GPUMD simulation
-
-        directory (str):
-            Name of directory storing the input file to read
-
-        inputfile (str):
-            Modal heat flux file output by GPUMD
-
-        directions (str):
-            Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed (i.e. 'xz'
-            is accepted)
-
-        outputfile (str):
-            File name to save read data to. Output file is a binary dictionary. Loading from a binary file is much
-            faster than re-reading data files and saving is recommended
-
-        ndiv (int):
-            Integer used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
-            need not be an integer
-
-        save (bool):
-            Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
-
-        multiprocessing (bool):
-            Toggle using multi-core processing for conversion of text file
-
-        ncore (bool):
-            Number of cores to use for multiprocessing. Ignored if multiprocessing is False
-
-        block_size (int):
-            Size of block (in bytes) to be read per read operation. File reading performance depend on this parameter
-            and file size
-
-        return_data (bool):
-            Toggle returning the loaded modal heat flux data. If this is False, the user should ensure that
-            save is True
-
-
-        Returns:
-                dict: Dictionary with all modal heat fluxes requested
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,nbins, nsamples, jmxi, jmxo, jmyi, jmyo, jmz
-       **units**,N/A, N/A,|jm1|,|jm1|,|jm1|,|jm1|,|jm1|
-
-    .. |jm1| replace:: eV\ :sup:`3/2` amu\ :sup:`-1/2` *x*\ :sup:`-1`
-
-
-    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
-    """
-    jm_path = util.get_path(directory, inputfile)
-    out_path = util.get_path(directory, outputfile)
-    data = __modal_analysis_read(nbins, nsamples, jm_path, ndiv, multiprocessing, ncore, block_size)
-    out = dict()
-    directions = util.get_direction(directions)
-    if 'x' in directions:
-        out['jmxi'] = data[:, :, 0]
-        out['jmxo'] = data[:, :, 1]
-    if 'y' in directions:
-        out['jmyi'] = data[:, :, 2]
-        out['jmyo'] = data[:, :, 3]
-    if 'z' in directions:
-        out['jmz'] = data[:, :, 4]
-
-    out['nbins'] = nbins
-    out['nsamples'] = nsamples
-
-    if save:
-        np.save(out_path, out)
-
-    if return_data:
-        return out
-    return
-
-
-def load_kappamode(nbins, nsamples, directory=None,
-                   inputfile='kappamode.out', directions='xyz',
-                   outputfile='kappamode.npy', ndiv=None, save=False,
-                   multiprocessing=False, ncore=None, block_size=65536, return_data=True):
-    """
-    Loads data from kappamode.out GPUMD file. Option to save as binary file for fast re-load later.
-    WARNING: If using multiprocessing, memory useage may be significantly larger than file size
-
-    Args:
-        nbins (int):
-            Number of bins used during the GPUMD simulation
-
-        nsamples (int):
-            Number of times thermal conductivity was sampled with HNEMA during GPUMD simulation
-
-        directory (str):
-            Name of directory storing the input file to read
-
-        inputfile (str):
-            Modal thermal conductivity file output by GPUMD
-
-        directions (str):
-            Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed (i.e. 'xz'
-            is accepted)
-
-        outputfile (str):
-            File name to save read data to. Output file is a binary dictionary. Loading from a binary file is much
-            faster than re-reading data files and saving is recommended
-
-        ndiv (int):
-            Integer used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
-            need not be an integer
-
-        save (bool):
-            Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
-
-        multiprocessing (bool):
-            Toggle using multi-core processing for conversion of text file
-
-        ncore (bool):
-            Number of cores to use for multiprocessing. Ignored if multiprocessing is False
-
-        block_size (int):
-            Size of block (in bytes) to be read per read operation. File reading performance depend on this parameter
-            and file size
-
-        return_data (bool):
-            Toggle returning the loaded modal thermal conductivity data. If this is False, the user should ensure that
-            save is True
-
-
-        Returns:
-                dict: Dictionary with all modal thermal conductivities requested
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,nbins,nsamples,kmxi,kmxo,kmyi,kmyo,kmz
-       **units**,N/A,N/A,|hn1|,|hn1|,|hn1|,|hn1|,|hn1|
-
-    .. |hn1| replace:: Wm\ :sup:`-1` K\ :sup:`-1` *x*\ :sup:`-1`
-
-    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
-    """
-    km_path = util.get_path(directory, inputfile)
-    out_path = util.get_path(directory, outputfile)
-    data = __modal_analysis_read(nbins, nsamples, km_path, ndiv, multiprocessing, ncore, block_size)
-    out = dict()
-    directions = util.get_direction(directions)
-    if 'x' in directions:
-        out['kmxi'] = data[:, :, 0]
-        out['kmxo'] = data[:, :, 1]
-    if 'y' in directions:
-        out['kmyi'] = data[:, :, 2]
-        out['kmyo'] = data[:, :, 3]
-    if 'z' in directions:
-        out['kmz'] = data[:, :, 4]
-
-    out['nbins'] = nbins
-    out['nsamples'] = nsamples
-
-    if save:
-        np.save(out_path, out)
-
-    if return_data:
-        return out
-    return
-
-
-def load_saved_kappamode(filename='kappamode.npy', directory=None):
-    """
-    Loads data saved by the 'load_kappamode' function and returns the original dictionary.
-
-    Args:
-        filename (str):
-            Name of the file to load
-
-        directory (str):
-            Directory the data file is located in
-
-    Returns:
-        dict: Dictionary with all modal thermal conductivities previously requested
-
-    """
-    path = util.get_path(directory, filename)
-    return np.load(path, allow_pickle=True).item()
-
-
-def load_saved_heatmode(filename='heatmode.npy', directory=None):
-    """
-    Loads data saved by the 'load_heatmode' or 'get_gkma_kappa' function and returns the original dictionary.
-
-    Args:
-        filename (str):
-            Name of the file to load
-
-        directory (str):
-            Directory the data file is located in
-
-    Returns:
-        dict: Dictionary with all modal heat flux previously requested
-
-    """
-
-    path = util.get_path(directory, filename)
-    return np.load(path, allow_pickle=True).item()
 
 
 def load_sdc(num_corr_points: Union[int, List[int]],
@@ -682,6 +400,256 @@ def load_hac(num_corr_points: Union[int, List[int]], output_interval: Union[int,
         start = end
         out[f"run{run_num}"] = run
     return out
+
+
+def read_modal_analysis_file(nbins: int, nsamples: int, datapath: str, ndiv: int, multiprocessing: bool = False,
+                             ncore: int = None, block_size: int = 65536) -> np.ndarray:
+    """
+    Core reader for the modal analysis methods. Recommend using the load_heatmode or load_kappamode functions instead.
+
+    Args:
+        nbins: Number of frequency bins
+        nsamples: Number of samples for simulation
+        datapath: Full path of the data file
+        ndiv: Divisor for shrinking the number of bins
+        multiprocessing: Whether or not to use multi-core processing
+        ncore: Number of cores to use if using multiprocessing
+        block_size: Number of bytes to read at once from the output files
+
+    Returns:
+        3D array with of data with dimension (nbins, nsamples, 5). Note: ndiv will change nbins.
+    """
+
+    def process_sample(num_bins: int, sample_num: int) -> np.ndarray:
+        """
+        Args:
+            num_bins: Number of bins used in the GPUMD simulation
+            sample_num: The current sample from a run to analyze
+
+        Returns:
+            A 2D array of each bin and output for a sample
+        """
+        out = list()
+        for bin_num in range(num_bins):
+            out += [float(x) for x in malines[bin_num + sample_num * num_bins].split()]
+        return np.array(out).reshape((num_bins, 5))
+
+    # Get full set of results
+    datalines = nbins * nsamples
+    with open(datapath, "rb") as f:
+        if multiprocessing:
+            malines = util.tail(f, datalines, block_size=block_size)
+        else:
+            malines = deque(util.tail(f, datalines, block_size=block_size))
+
+    if multiprocessing:  # TODO Improve memory efficiency of multiprocessing
+        if not ncore:
+            ncore = mp.cpu_count()
+
+        func = partial(process_sample, nbins)
+        pool = mp.Pool(ncore)
+        data = np.array(pool.map(func, range(nsamples)), dtype='float32').transpose((1, 0, 2))
+        pool.close()
+
+    else:  # Faster if single thread
+        data = np.zeros((nbins, nsamples, 5), dtype='float32')
+        for sample_idx in range(nsamples):
+            for bin_idx in range(nbins):
+                measurements = malines.popleft().split()
+                data[bin_idx, sample_idx, 0] = float(measurements[0])
+                data[bin_idx, sample_idx, 1] = float(measurements[1])
+                data[bin_idx, sample_idx, 2] = float(measurements[2])
+                data[bin_idx, sample_idx, 3] = float(measurements[3])
+                data[bin_idx, sample_idx, 4] = float(measurements[4])
+
+    if ndiv:
+        nbins = int(np.ceil(data.shape[0] / ndiv))  # overwrite nbins
+        npad = nbins * ndiv - data.shape[0]
+        data = np.pad(data, [(0, npad), (0, 0), (0, 0)])
+        data = np.sum(data.reshape((-1, ndiv, data.shape[1], data.shape[2])), axis=1)
+
+    return data
+
+
+def load_heatmode(nbins: int,
+                  nsamples: int,
+                  inputfile: str = "heatmode.out",
+                  directory: str = None,
+                  directions: str = "xyz",
+                  ndiv: int = None,
+                  outputfile: str = "heatmode.npy",
+                  save: bool = False,
+                  multiprocessing: bool = False,
+                  ncore: int = None,
+                  block_size: int = None,
+                  return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
+    """
+    Loads data from heatmode.out GPUMD file. Option to save as binary file for fast re-load later.
+    WARNING: If using multiprocessing, memory usage may be significantly larger than file size
+
+    Args:
+        nbins: Number of bins used during the GPUMD simulation
+        nsamples: Number of times heat flux was sampled with GKMA during GPUMD simulation
+        inputfile: Modal heat flux file output by GPUMD
+        directory: Name of directory storing the input file to read
+        directions: Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed
+            (i.e. 'xz' is accepted)
+        ndiv: Integer used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
+            need not be an integer
+        outputfile: File name to save read data to. Output file is a binary dictionary. Loading from a binary file is
+            much faster than re-reading data files and saving is recommended
+        save: Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
+        multiprocessing: Toggle using multi-core processing for conversion of text file
+        ncore: Number of cores to use for multiprocessing. Ignored if multiprocessing is False
+        block_size: Size of block (in bytes) to be read per read operation. File reading performance depend on this
+            parameter and file size
+        return_data: Toggle returning the loaded modal heat flux data. If this is False, the user should ensure that
+            save is True
+
+        Returns:
+            Dictionary with all modal heat fluxes requested
+
+    .. csv-table:: Output dictionary
+       :stub-columns: 1
+
+       **key**,nbins, nsamples, jmxi, jmxo, jmyi, jmyo, jmz
+       **units**,N/A, N/A,|jm1|,|jm1|,|jm1|,|jm1|,|jm1|
+
+    .. |jm1| replace:: eV\ :sup:`3/2` amu\ :sup:`-1/2` *x*\ :sup:`-1`
+
+    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
+    """
+    jm_path = util.get_path(directory, inputfile)
+    out_path = util.get_path(directory, outputfile)
+    data = read_modal_analysis_file(nbins, nsamples, jm_path, ndiv, multiprocessing, ncore, block_size)
+    out = dict()
+    directions = util.get_direction(directions)
+    if 'x' in directions:
+        out['jmxi'] = data[:, :, 0]
+        out['jmxo'] = data[:, :, 1]
+    if 'y' in directions:
+        out['jmyi'] = data[:, :, 2]
+        out['jmyo'] = data[:, :, 3]
+    if 'z' in directions:
+        out['jmz'] = data[:, :, 4]
+
+    out['nbins'] = nbins
+    out['nsamples'] = nsamples
+
+    if save:
+        np.save(out_path, out)
+
+    return out if return_data else None
+
+
+def load_kappamode(nbins: int,
+                   nsamples: int,
+                   inputfile: str = "kappamode.out",
+                   directory: str = None,
+                   directions: str = "xyz",
+                   ndiv: int = None,
+                   outputfile: str = "kappamode.npy",
+                   save: bool = False,
+                   multiprocessing: bool = False,
+                   ncore: int = None,
+                   block_size: int = None,
+                   return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
+    """
+    Loads data from kappamode.out GPUMD file. Option to save as binary file for fast re-load later.
+    WARNING: If using multiprocessing, memory useage may be significantly larger than file size
+
+    Args:
+        nbins: Number of bins used during the GPUMD simulation
+        nsamples: Number of times thermal conductivity was sampled with HNEMA during GPUMD simulation
+        inputfile: Modal thermal conductivity file output by GPUMD
+        directory: Name of directory storing the input file to read
+        directions: Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed
+            (i.e. 'xz' is accepted)
+        ndiv: Integer used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
+            need not be an integer
+        outputfile: File name to save read data to. Output file is a binary dictionary. Loading from a binary file is
+            much faster than re-reading data files and saving is recommended
+        save: Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
+        multiprocessing: Toggle using multi-core processing for conversion of text file
+        ncore: Number of cores to use for multiprocessing. Ignored if multiprocessing is False
+        block_size: Size of block (in bytes) to be read per read operation. File reading performance depend on this
+            parameter and file size
+        return_data: Toggle returning the loaded modal thermal conductivity data. If this is False, the user should
+            ensure that save is True
+
+        Returns:
+            Dictionary with all modal thermal conductivities requested
+
+    .. csv-table:: Output dictionary
+       :stub-columns: 1
+
+       **key**,nbins,nsamples,kmxi,kmxo,kmyi,kmyo,kmz
+       **units**,N/A,N/A,|hn1|,|hn1|,|hn1|,|hn1|,|hn1|
+
+    .. |hn1| replace:: Wm\ :sup:`-1` K\ :sup:`-1` *x*\ :sup:`-1`
+
+    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
+    """
+    km_path = util.get_path(directory, inputfile)
+    out_path = util.get_path(directory, outputfile)
+    data = read_modal_analysis_file(nbins, nsamples, km_path, ndiv, multiprocessing, ncore, block_size)
+    out = dict()
+    directions = util.get_direction(directions)
+    if 'x' in directions:
+        out['kmxi'] = data[:, :, 0]
+        out['kmxo'] = data[:, :, 1]
+    if 'y' in directions:
+        out['kmyi'] = data[:, :, 2]
+        out['kmyo'] = data[:, :, 3]
+    if 'z' in directions:
+        out['kmz'] = data[:, :, 4]
+
+    out['nbins'] = nbins
+    out['nsamples'] = nsamples
+
+    if save:
+        np.save(out_path, out)
+
+    return out if return_data else None
+
+
+def load_saved_kappamode(filename='kappamode.npy', directory=None):
+    """
+    Loads data saved by the 'load_kappamode' function and returns the original dictionary.
+
+    Args:
+        filename (str):
+            Name of the file to load
+
+        directory (str):
+            Directory the data file is located in
+
+    Returns:
+        dict: Dictionary with all modal thermal conductivities previously requested
+
+    """
+    path = util.get_path(directory, filename)
+    return np.load(path, allow_pickle=True).item()
+
+
+def load_saved_heatmode(filename='heatmode.npy', directory=None):
+    """
+    Loads data saved by the 'load_heatmode' or 'get_gkma_kappa' function and returns the original dictionary.
+
+    Args:
+        filename (str):
+            Name of the file to load
+
+        directory (str):
+            Directory the data file is located in
+
+    Returns:
+        dict: Dictionary with all modal heat flux previously requested
+
+    """
+
+    path = util.get_path(directory, filename)
+    return np.load(path, allow_pickle=True).item()
 
 
 def get_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", directory: str = None) -> dict:
