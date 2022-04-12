@@ -3,7 +3,7 @@ import multiprocessing
 import numpy as np
 
 
-def autocorr(f, max_lag):
+def autocorrelation(f, max_lag):
     """
     Computes a fast autocorrelation function <f*f> and returns up to max_lag.
 
@@ -34,7 +34,7 @@ def autocorr(f, max_lag):
     return np.real(acf[:max_lag+1])
 
 
-def corr(f, g, max_lag):
+def correlation(f, g, max_lag):
     """
     Computes fast correlation function <f*g> and returns up to max_lag. Assumes f and g are same length.
 
