@@ -81,10 +81,10 @@ def __modal_analysis_read(nbins, nsamples, datapath,
     return data
 
 
-def __basic_reader(points, data, labels):
+def split_data_by_runs(points_per_run: List[int], data, labels: List[str]):
     start = 0
     out = dict()
-    for run_num, npoints in enumerate(points):
+    for run_num, npoints in enumerate(points_per_run):
         end = start + npoints
         run = dict()
         for label_num, key in enumerate(labels):
@@ -94,12 +94,12 @@ def __basic_reader(points, data, labels):
     return out
 
 
-def __basic_frame_loader(num_atoms, directory, filename):
+def basic_frame_loader(lines_per_frame, directory, filename):
     path = util.get_path(directory, filename)
     data = pd.read_csv(path, delim_whitespace=True, header=None).to_numpy(dtype='float')
-    if not (data.shape[0] / num_atoms).is_integer():
+    if not (data.shape[0] / lines_per_frame).is_integer():
         raise ValueError("An integer number of frames cannot be created. Please check num_atoms.")
-    return data.reshape(-1, num_atoms, 3)
+    return data.reshape(-1, lines_per_frame, 3)
 
 
 #########################################
@@ -136,7 +136,7 @@ def load_force(num_atoms: int, filename: str = "force.out", directory: str = Non
     Returns:
         Numpy array of shape (-1,n,3) containing all forces (ev/A) from filename
     """
-    return __basic_frame_loader(num_atoms, directory, filename)
+    return basic_frame_loader(num_atoms, directory, filename)
 
 
 def load_velocity(num_atoms: int, filename: str = "velocity.out", directory: str = None) -> np.ndarray:
@@ -151,7 +151,7 @@ def load_velocity(num_atoms: int, filename: str = "velocity.out", directory: str
     Returns:
         Numpy array of shape (-1,n,3) containing all forces (A/ps) from filename
     """
-    return __basic_frame_loader(num_atoms, directory, filename)
+    return basic_frame_loader(num_atoms, directory, filename)
 
 
 def load_compute(quantities: List[str], directory: str = None, filename: str = 'compute.out') \
@@ -490,7 +490,7 @@ def load_sdc(num_corr_points: Union[int, List[int]],
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
     util.check_range(num_corr_points, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz', 'SDCx', 'SDCy', 'SDCz']
-    return __basic_reader(num_corr_points, data, labels)
+    return split_data_by_runs(num_corr_points, data, labels)
 
 
 def load_vac(num_corr_points: Union[int, List[int]],
@@ -520,7 +520,7 @@ def load_vac(num_corr_points: Union[int, List[int]],
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
     util.check_range(num_corr_points, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz']
-    return __basic_reader(num_corr_points, data, labels)
+    return split_data_by_runs(num_corr_points, data, labels)
 
 
 def load_dos(num_dos_points: Union[int, List[int]],
@@ -550,7 +550,7 @@ def load_dos(num_dos_points: Union[int, List[int]],
     data = pd.read_csv(dos_path, delim_whitespace=True, header=None)
     util.check_range(num_dos_points, data.shape[0])
     labels = ['nu', 'DOSx', 'DOSy', 'DOSz']
-    out = __basic_reader(num_dos_points, data, labels)
+    out = split_data_by_runs(num_dos_points, data, labels)
     for key in out.keys():
         out[key]['nu'] /= (2 * np.pi)
     return out
