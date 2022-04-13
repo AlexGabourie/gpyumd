@@ -151,25 +151,16 @@ def running_ave(y: np.ndarray, x: np.ndarray) -> np.ndarray:
     return cumtrapz(y, x, initial=0) / x
 
 
-def hnemd_spectral_kappa(shc, driving_force, temperature, volume):
+def hnemd_spectral_kappa(shc: dict, driving_force: float, temperature: float, volume: float) -> None:
     """
-    Spectral thermal conductivity calculation from an SHC run
+    Spectral thermal conductivity calculation from the spectral heat current from an shc run. Updates the shc dict from
+    data.load_shc()
 
     Args:
-        shc (dict):
-            The data from a single SHC run as output by thermo.gpumd.data.load_shc
-
-        driving_force (float):
-            HNEMD force in (1/A)
-
-        temperature (float):
-            HNEMD run temperature (K)
-
-        volume (float):
-            Volume (A^3) during HNEMD run
-
-    Returns:
-        dict: Same as shc argument, but with spectral thermal conductivity included
+        shc: The data from a single SHC run as output by thermo.gpumd.data.load_shc
+        driving_force: HNEMD force in (1/A)
+        temperature: HNEMD run temperature (K)
+        volume: Volume (A^3) during HNEMD run
 
     .. csv-table:: Output dictionary (new entries)
        :stub-columns: 1
