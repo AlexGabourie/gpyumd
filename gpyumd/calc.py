@@ -1,84 +1,50 @@
+from typing import Union, Dict
 import numpy as np
 from scipy.integrate import cumtrapz
+
 from gpyumd.util import get_direction, get_path
-from gpyumd.math.correlate import corr
+from gpyumd.math.correlate import correlation
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-def __scale_gpumd_tc(vol, temperature):
-    """
-    Used to scale the thermal conductivity when converting GPUMD heat-flux correlations
-    to thermal conductivity.
-
-    Args:
-        vol (float):
-            Volume in angstroms^3
-
-        temperature (float):
-            Temperature in K
-
-    Returns:
-        float: Converted value
-    """
-
-    one = 1.602176634e-19 * 9.651599e7  # eV^3/amu -> Jm^2/s^2*eV
-    two = 1. / 1.e15  # fs -> s
-    three = 1.e30 / 8.617333262145e-5  # K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
-    return one * two * three / (temperature * temperature * vol)
-
-
-def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, vol=1, max_tau=None, directions='xyz',
-                   outputfile='heatmode.npy', save=False, directory=None, return_data=True):
+def get_gkma_kappa(data: dict,
+                   nbins: int,
+                   nsamples: int,
+                   dt: float,
+                   sample_interval: int,
+                   temperature: float = 300,
+                   vol: float = 1,
+                   max_tau: float = None,
+                   directions: str = "xyz",
+                   outputfile: str = "heatmode.npy",
+                   save: bool = False,
+                   directory: str = None,
+                   return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
     Calculate the Green-Kubo thermal conductivity from modal heat current data from 'load_heatmode'
 
     Args:
-        data (dict):
-            Dictionary with heat currents loaded by 'load_heatmode'
-
-        nbins (int):
-            Number of bins used during the GPUMD simulation
-
-        nsamples (int):
-            Number of times heat flux was sampled with GKMA during GPUMD simulation
-
-        dt (float):
-            Time step during data collection in fs
-
-        sample_interval (int):
-            Number of time steps per sample of modal heat flux
-
-        temperature (float):
-            Temperature of system during data collection
-
-        vol (float):
-            Volume of system in angstroms^3
-
-        max_tau (float):
-            Correlation time to calculate up to. Units of ns
-
-        directions (str):
-            Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed (i.e. 'xz'
-            is accepted)
-
-        outputfile (str):
-            File name to save read data to. Output file is a binary dictionary. Loading from a binary file is much
-            faster than re-reading data files and saving is recommended
-
-        save (bool):
-            Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
-
-        directory (str):
-            Name of directory storing the input file to read
-
-        return_data (bool):
-            Toggle returning the loaded modal heat flux data. If this is False, the user should ensure that
+        data: Dictionary with heat currents loaded by 'load_heatmode'
+        nbins: Number of bins used during the GPUMD simulation
+        nsamples: Number of times heat flux was sampled with GKMA during GPUMD simulation
+        dt: Time step during data collection in fs
+        sample_interval: Number of time steps per sample of modal heat flux
+        temperature: Temperature of system during data collection
+        vol: Volume of system in angstroms^3
+        max_tau: Correlation time to calculate up to. Units of ns
+        directions: Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed
+            (i.e. 'xz' is accepted)
+        outputfile: File name to save read data to. Output file is a binary dictionary. Loading from a binary file is
+            much faster than re-reading data files and saving is recommended
+        save: Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
+        directory: Name of directory storing the input file to read
+        return_data: Toggle returning the loaded modal heat flux data. If this is False, the user should ensure that
             save is True
 
     Returns:
-        dict: Input data dict but with correlation, thermal conductivity, and lag time data included
+        Input data dict but with correlation, thermal conductivity, and lag time data included
 
     .. csv-table:: Output dictionary (new entries)
        :stub-columns: 1
@@ -91,8 +57,13 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
 
     Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
     """
+    def kappa_scaling() -> float:  # Keep to understand unit conversion
+        # Units:     eV^3/amu -> Jm^2/s^2*eV         fs -> s       K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
+        scaling = (1.602176634e-19 * 9.651599e7) * (1. / 1.e15) * (1.e30 / 8.617333262145e-5)
+        return scaling / (temperature * temperature * vol)
+
     out_path = get_path(directory, outputfile)
-    scale = __scale_gpumd_tc(vol, temperature)
+    scale = kappa_scaling()
     # set the heat flux sampling time: rate * timestep * scaling
     srate = sample_interval * dt  # [fs]
 
@@ -124,10 +95,10 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
         data['kmxi'] = np.zeros((nbins, size))
         data['kmxo'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmxijx'][m, :] = corr(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
+            data['jmxijx'][m, :] = correlation(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
             data['kmxi'][m, :] = cumtrapz(data['jmxijx'][m, :], data['tau'], initial=0) * scale
 
-            data['jmxojx'][m, :] = corr(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
+            data['jmxojx'][m, :] = correlation(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
             data['kmxo'][m, :] = cumtrapz(data['jmxojx'][m, :], data['tau'], initial=0) * scale
         del jx
 
@@ -141,10 +112,10 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
         data['kmyi'] = np.zeros((nbins, size))
         data['kmyo'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmyijy'][m, :] = corr(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
+            data['jmyijy'][m, :] = correlation(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
             data['kmyi'][m, :] = cumtrapz(data['jmyijy'][m, :], data['tau'], initial=0) * scale
 
-            data['jmyojy'][m, :] = corr(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
+            data['jmyojy'][m, :] = correlation(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
             data['kmyo'][m, :] = cumtrapz(data['jmyojy'][m, :], data['tau'], initial=0) * scale
         del jy
 
@@ -156,7 +127,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
         data['jmzjz'] = np.zeros((nbins, size))
         data['kmz'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmzjz'][m, :] = corr(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
+            data['jmzjz'][m, :] = correlation(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
             data['kmz'][m, :] = cumtrapz(data['jmzjz'][m, :], data['tau'], initial=0) * scale
         del jz
 
@@ -165,9 +136,7 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
     if save:
         np.save(out_path, data)
 
-    if return_data:
-        return data
-    return
+    return data if return_data else None
 
 
 def running_ave(y: np.ndarray, x: np.ndarray) -> np.ndarray:
