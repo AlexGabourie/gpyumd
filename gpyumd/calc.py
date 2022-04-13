@@ -170,18 +170,16 @@ def get_gkma_kappa(data, nbins, nsamples, dt, sample_interval, temperature=300, 
     return
 
 
-def running_ave(kappa, time):
+def running_ave(y: np.ndarray, x: np.ndarray) -> np.ndarray:
     """
-    Gets running average. Reads and returns the structure input file from GPUMD.
-
     Args:
-        kappa (ndarray): Raw thermal conductivity
-        time (ndarray): Time vector that kappa was sampled at
+        y: Dependent variable
+        x: Independent variable
 
     Returns:
-        ndarray: Running average of kappa input
+        Running average of y
     """
-    return cumtrapz(kappa, time, initial=0)/time
+    return cumtrapz(y, x, initial=0) / x
 
 
 def hnemd_spectral_kappa(shc, driving_force, temperature, volume):
