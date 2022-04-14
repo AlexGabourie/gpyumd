@@ -1,7 +1,6 @@
 from typing import Union, Dict
 import numpy as np
-from gpyumd.util import get_direction, get_path
-from gpyumd.math import correlate
+from gpyumd import util, math
 from scipy.integrate import cumtrapz
 
 __author__ = "Alexander Gabourie"
@@ -9,18 +8,18 @@ __email__ = "agabourie47@gmail.com"
 
 
 def calc_gkma_kappa(data: dict,
-                   nbins: int,
-                   nsamples: int,
-                   dt: float,
-                   sample_interval: int,
-                   temperature: float = 300,
-                   vol: float = 1,
-                   max_tau: float = None,
-                   directions: str = "xyz",
-                   outputfile: str = "heatmode.npy",
-                   save: bool = False,
-                   directory: str = None,
-                   return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
+                    nbins: int,
+                    nsamples: int,
+                    dt: float,
+                    sample_interval: int,
+                    temperature: float = 300,
+                    vol: float = 1,
+                    max_tau: float = None,
+                    directions: str = "xyz",
+                    outputfile: str = "heatmode.npy",
+                    save: bool = False,
+                    directory: str = None,
+                    return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
     Calculate the Green-Kubo thermal conductivity from modal heat current data from 'load_heatmode'
 
@@ -44,24 +43,13 @@ def calc_gkma_kappa(data: dict,
 
     Returns:
         Input data dict but with correlation, thermal conductivity, and lag time data included
-
-    .. csv-table:: Output dictionary (new entries)
-       :stub-columns: 1
-
-       **key**,tau,kmxi,kmxo,kmyi,kmyo,kmz,jmxijx,jmxojx,jmyijy,jmyojy,jmzjz
-       **units**,ns,|gk1|,|gk1|,|gk1|,|gk1|,|gk1|,|gk2|,|gk2|,|gk2|,|gk2|,|gk2|
-
-    .. |gk1| replace:: Wm\ :sup:`-1` K\ :sup:`-1` *x*\ :sup:`-1`
-    .. |gk2| replace:: eV\ :sup:`3` amu\ :sup:`-1` *x*\ :sup:`-1`
-
-    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
     """
     def kappa_scaling() -> float:  # Keep to understand unit conversion
         # Units:     eV^3/amu -> Jm^2/s^2*eV         fs -> s       K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
         scaling = (1.602176634e-19 * 9.651599e7) * (1. / 1.e15) * (1.e30 / 8.617333262145e-5)
         return scaling / (temperature * temperature * vol)
 
-    out_path = get_path(directory, outputfile)
+    out_path = util.get_path(directory, outputfile)
     scale = kappa_scaling()
     # set the heat flux sampling time: rate * timestep * scaling
     srate = sample_interval * dt  # [fs]
@@ -80,7 +68,7 @@ def calc_gkma_kappa(data: dict,
     data['tau'] = np.squeeze(np.linspace(0, max_lag * srate, max_lag + 1))  # [ns]
 
     # AUTOCORRELATION #
-    directions = get_direction(directions)
+    directions = util.get_direction(directions)
     cplx = np.complex128
     # Note: loops necessary due to memory constraints
     #  (can easily max out cluster mem.)
@@ -94,10 +82,10 @@ def calc_gkma_kappa(data: dict,
         data['kmxi'] = np.zeros((nbins, size))
         data['kmxo'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmxijx'][m, :] = correlate(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
+            data['jmxijx'][m, :] = math.correlate(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
             data['kmxi'][m, :] = cumtrapz(data['jmxijx'][m, :], data['tau'], initial=0) * scale
 
-            data['jmxojx'][m, :] = correlate(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
+            data['jmxojx'][m, :] = math.correlate(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
             data['kmxo'][m, :] = cumtrapz(data['jmxojx'][m, :], data['tau'], initial=0) * scale
         del jx
 
@@ -111,10 +99,10 @@ def calc_gkma_kappa(data: dict,
         data['kmyi'] = np.zeros((nbins, size))
         data['kmyo'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmyijy'][m, :] = correlate(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
+            data['jmyijy'][m, :] = math.correlate(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
             data['kmyi'][m, :] = cumtrapz(data['jmyijy'][m, :], data['tau'], initial=0) * scale
 
-            data['jmyojy'][m, :] = correlate(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
+            data['jmyojy'][m, :] = math.correlate(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
             data['kmyo'][m, :] = cumtrapz(data['jmyojy'][m, :], data['tau'], initial=0) * scale
         del jy
 
@@ -126,7 +114,7 @@ def calc_gkma_kappa(data: dict,
         data['jmzjz'] = np.zeros((nbins, size))
         data['kmz'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmzjz'][m, :] = correlate(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
+            data['jmzjz'][m, :] = math.correlate(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
             data['kmz'][m, :] = cumtrapz(data['jmzjz'][m, :], data['tau'], initial=0) * scale
         del jz
 
@@ -140,22 +128,14 @@ def calc_gkma_kappa(data: dict,
 
 def calc_spectral_kappa(shc: dict, driving_force: float, temperature: float, volume: float) -> None:
     """
-    Spectral thermal conductivity calculation from the spectral heat current from an SHC run. Updates the shc dict from
-    data.load_shc()
+    Spectral thermal conductivity calculation from the spectral heat current from an SHC run. Updates the shc dict
+    from data.load_shc()
 
     Args:
         shc: The data from a single SHC run as output by thermo.gpumd.data.load_shc
         driving_force: HNEMD force in (1/A)
         temperature: HNEMD run temperature (K)
         volume: Volume (A^3) during HNEMD run
-
-    .. csv-table:: Output dictionary (new entries)
-       :stub-columns: 1
-
-       **key**,kwi,kwo
-       **units**,|sh3|,|sh3|
-
-    .. |sh3| replace:: Wm\ :sup:`-1` K\ :sup:`-1` THz\ :sup:`-1`
     """
     if 'jwi' not in shc.keys() or 'jwo' not in shc.keys():
         raise ValueError("shc argument must be from load_shc and contain in/out heat currents.")
