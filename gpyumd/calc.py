@@ -1,15 +1,14 @@
 from typing import Union, Dict
 import numpy as np
-from scipy.integrate import cumtrapz
-
 from gpyumd.util import get_direction, get_path
-from gpyumd.math.correlate import correlation
+from gpyumd.math import correlate
+from scipy.integrate import cumtrapz
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-def get_gkma_kappa(data: dict,
+def calc_gkma_kappa(data: dict,
                    nbins: int,
                    nsamples: int,
                    dt: float,
@@ -95,10 +94,10 @@ def get_gkma_kappa(data: dict,
         data['kmxi'] = np.zeros((nbins, size))
         data['kmxo'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmxijx'][m, :] = correlation(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
+            data['jmxijx'][m, :] = correlate(data['jmxi'][m, :].astype(cplx), jx.astype(cplx), max_lag)
             data['kmxi'][m, :] = cumtrapz(data['jmxijx'][m, :], data['tau'], initial=0) * scale
 
-            data['jmxojx'][m, :] = correlation(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
+            data['jmxojx'][m, :] = correlate(data['jmxo'][m, :].astype(cplx), jx.astype(cplx), max_lag)
             data['kmxo'][m, :] = cumtrapz(data['jmxojx'][m, :], data['tau'], initial=0) * scale
         del jx
 
@@ -112,10 +111,10 @@ def get_gkma_kappa(data: dict,
         data['kmyi'] = np.zeros((nbins, size))
         data['kmyo'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmyijy'][m, :] = correlation(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
+            data['jmyijy'][m, :] = correlate(data['jmyi'][m, :].astype(cplx), jy.astype(cplx), max_lag)
             data['kmyi'][m, :] = cumtrapz(data['jmyijy'][m, :], data['tau'], initial=0) * scale
 
-            data['jmyojy'][m, :] = correlation(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
+            data['jmyojy'][m, :] = correlate(data['jmyo'][m, :].astype(cplx), jy.astype(cplx), max_lag)
             data['kmyo'][m, :] = cumtrapz(data['jmyojy'][m, :], data['tau'], initial=0) * scale
         del jy
 
@@ -127,7 +126,7 @@ def get_gkma_kappa(data: dict,
         data['jmzjz'] = np.zeros((nbins, size))
         data['kmz'] = np.zeros((nbins, size))
         for m in range(nbins):
-            data['jmzjz'][m, :] = correlation(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
+            data['jmzjz'][m, :] = correlate(data['jmz'][m, :].astype(cplx), jz.astype(cplx), max_lag)
             data['kmz'][m, :] = cumtrapz(data['jmzjz'][m, :], data['tau'], initial=0) * scale
         del jz
 
@@ -139,21 +138,9 @@ def get_gkma_kappa(data: dict,
     return data if return_data else None
 
 
-def running_ave(y: np.ndarray, x: np.ndarray) -> np.ndarray:
+def calc_spectral_kappa(shc: dict, driving_force: float, temperature: float, volume: float) -> None:
     """
-    Args:
-        y: Dependent variable
-        x: Independent variable
-
-    Returns:
-        Running average of y
-    """
-    return cumtrapz(y, x, initial=0) / x
-
-
-def hnemd_spectral_kappa(shc: dict, driving_force: float, temperature: float, volume: float) -> None:
-    """
-    Spectral thermal conductivity calculation from the spectral heat current from an shc run. Updates the shc dict from
+    Spectral thermal conductivity calculation from the spectral heat current from an SHC run. Updates the shc dict from
     data.load_shc()
 
     Args:

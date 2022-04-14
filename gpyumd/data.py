@@ -3,7 +3,6 @@ import pandas as pd
 import os
 import copy
 import multiprocessing as mp
-from functools import partial
 from collections import deque
 from typing import List, Dict, Union, Any
 
@@ -641,8 +640,7 @@ def load_saved_heatmode(filename: str = "heatmode.npy", directory: str = None):
     return np.load(path, allow_pickle=True).item()
 
 
-# TODO move this function and reduce_frequency_info?
-def get_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", directory: str = None) -> dict:
+def load_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", directory: str = None) -> dict:
     """
     Gathers eigen-frequency information from the eigenvector file and sorts
     it appropriately based on the selected frequency bins (identical to
