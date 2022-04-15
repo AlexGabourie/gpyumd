@@ -7,6 +7,7 @@ __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
+# TODO make docstrings with max length 72
 def calc_gkma_kappa(data: dict,
                     nbins: int,
                     nsamples: int,
@@ -21,28 +22,35 @@ def calc_gkma_kappa(data: dict,
                     directory: str = None,
                     return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
-    Calculate the Green-Kubo thermal conductivity from modal heat current data from 'load_heatmode'
+    Calculate the Green-Kubo thermal conductivity from modal heat
+    current data from 'load_heatmode'
 
     Args:
         data: Dictionary with heat currents loaded by 'load_heatmode'
         nbins: Number of bins used during the GPUMD simulation
-        nsamples: Number of times heat flux was sampled with GKMA during GPUMD simulation
+        nsamples: Number of times heat flux was sampled with GKMA
+            during GPUMD simulation
         dt: Time step during data collection in fs
-        sample_interval: Number of time steps per sample of modal heat flux
+        sample_interval: Number of time steps per sample of modal heat
+            flux
         temperature: Temperature of system during data collection
         vol: Volume of system in angstroms^3
         max_tau: Correlation time to calculate up to. Units of ns
-        directions: Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed
-            (i.e. 'xz' is accepted)
-        outputfile: File name to save read data to. Output file is a binary dictionary. Loading from a binary file is
-            much faster than re-reading data files and saving is recommended
-        save: Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
+        directions: Directions to gather data from. Any order of 'xyz'
+            is accepted. Excluding directions also allowed (i.e. 'xz'
+            is accepted)
+        outputfile: File name to save read data to. Output file is a
+            binary dictionary. Loading from a binary file is much
+            faster than re-reading data files and saving is recommended
+        save: Toggle saving data to binary dictionary. Loading from
+            save file is much faster and recommended
         directory: Name of directory storing the input file to read
-        return_data: Toggle returning the loaded modal heat flux data. If this is False, the user should ensure that
-            save is True
+        return_data: Toggle returning the loaded modal heat flux data.
+            If this is False, the user should ensure that save is True
 
     Returns:
-        Input data dict but with correlation, thermal conductivity, and lag time data included
+        Input data dict but with correlation, thermal conductivity, and
+            lag time data included
     """
     def kappa_scaling() -> float:  # Keep to understand unit conversion
         # Units:     eV^3/amu -> Jm^2/s^2*eV         fs -> s       K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
@@ -128,11 +136,11 @@ def calc_gkma_kappa(data: dict,
 
 def calc_spectral_kappa(shc: dict, driving_force: float, temperature: float, volume: float) -> None:
     """
-    Spectral thermal conductivity calculation from the spectral heat current from an SHC run. Updates the shc dict
-    from data.load_shc()
+    Spectral thermal conductivity calculation from the spectral heat
+    current from an SHC run. Updates the shc dict from data.load_shc()
 
     Args:
-        shc: The data from a single SHC run as output by thermo.gpumd.data.load_shc
+        shc: The data from a single SHC run as output by load_shc
         driving_force: HNEMD force in (1/A)
         temperature: HNEMD run temperature (K)
         volume: Volume (A^3) during HNEMD run
