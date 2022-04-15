@@ -6,7 +6,8 @@ from scipy.integrate import cumtrapz
 
 def autocorrelate(f: np.ndarray, max_lag: float) -> np.ndarray:
     """
-    Computes a fast autocorrelation function <f*f> and returns up to max_lag.
+    Computes a fast autocorrelation function <f*f> and returns up to
+    max_lag.
 
     Args:
         f: Vector for autocorrelation
@@ -33,7 +34,8 @@ def autocorrelate(f: np.ndarray, max_lag: float) -> np.ndarray:
 
 def correlate(f: np.ndarray, g: np.ndarray, max_lag: float) -> np.ndarray:
     """
-    Computes fast correlation function <f*g> and returns up to max_lag. Assumes f and g are same length.
+    Computes fast correlation function <f*g> and returns up to max_lag.
+    Assumes f and g are same length.
 
     Args:
         f: Vector for correlation
