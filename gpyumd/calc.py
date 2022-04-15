@@ -2,12 +2,12 @@ from typing import Union, Dict
 import numpy as np
 from gpyumd import util, math
 from scipy.integrate import cumtrapz
+import copy
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-# TODO make docstrings with max length 72
 def calc_gkma_kappa(data: dict,
                     nbins: int,
                     nsamples: int,
@@ -25,33 +25,32 @@ def calc_gkma_kappa(data: dict,
     Calculate the Green-Kubo thermal conductivity from modal heat current
     data from 'load_heatmode'
 
-
     Args:
         data: Dictionary with heat currents loaded by 'load_heatmode'
         nbins: Number of bins used during the GPUMD simulation
         nsamples: Number of times heat flux was sampled with GKMA
-            during GPUMD simulation
+         during GPUMD simulation
         dt: Time step during data collection in fs
         sample_interval: Number of time steps per sample of modal heat
-            flux
+         flux
         temperature: Temperature of system during data collection
         vol: Volume of system in angstroms^3
         max_tau: Correlation time to calculate up to. Units of ns
         directions: Directions to gather data from. Any order of 'xyz'
-            is accepted. Excluding directions also allowed (i.e. 'xz'
-            is accepted)
+         is accepted. Excluding directions also allowed (i.e. 'xz'
+         is accepted)
         outputfile: File name to save read data to. Output file is a
-            binary dictionary. Loading from a binary file is much
-            faster than re-reading data files and saving is recommended
+         binary dictionary. Loading from a binary file is much
+         faster than re-reading data files and saving is recommended
         save: Toggle saving data to binary dictionary. Loading from
-            save file is much faster and recommended
+         save file is much faster and recommended
         directory: Name of directory storing the input file to read
         return_data: Toggle returning the loaded modal heat flux data.
-            If this is False, the user should ensure that save is True
+         If this is False, the user should ensure that save is True
 
     Returns:
         Input data dict but with correlation, thermal conductivity, and
-            lag time data included
+         lag time data included
     """
     def kappa_scaling() -> float:  # Keep to understand unit conversion
         # Units:     eV^3/amu -> Jm^2/s^2*eV         fs -> s       K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
@@ -153,3 +152,32 @@ def calc_spectral_kappa(shc: dict, driving_force: float, temperature: float, vol
     convert = 1602.17662
     shc['kwi'] = shc['jwi'] * convert / (driving_force * temperature * volume)
     shc['kwo'] = shc['jwo'] * convert / (driving_force * temperature * volume)
+
+
+def calc_reduced_freq_info(freq: dict, ndiv: int = 1) -> dict:
+    """
+    Recalculates modal analysis frequency binning information based on how
+    many times larger bins are wanted.
+
+    Args:
+        freq: Dictionary with frequency binning information from the
+         get_frequency_info function output
+        ndiv: Divisor used to shrink number of bins output. If
+         originally have 10 bins, but want 5, ndiv=2. nbins/ndiv need
+         not be an integer
+
+    Returns:
+        Dictionary with the system eigen freqeuency information along
+         with binning information
+    """
+    epsilon = 1.e-6  # tolerance for float errors
+    freq = copy.deepcopy(freq)
+    freq['bin_f_size'] = freq['bin_f_size'] * ndiv
+    freq['fmax'] = (np.floor(np.abs(freq['fq'][-1]) / freq['bin_f_size']) + 1) * freq['bin_f_size']
+    nbins_new = int(np.ceil(freq['nbins'] / ndiv - epsilon))
+    npad = nbins_new * ndiv - freq['nbins']
+    freq['nbins'] = nbins_new
+    freq['bin_count'] = np.pad(freq['bin_count'], [(0, npad)])
+    freq['bin_count'] = np.sum(freq['bin_count'].reshape(-1, ndiv), axis=1)
+    freq['ndiv'] = ndiv
+    return freq

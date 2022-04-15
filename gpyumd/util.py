@@ -1,6 +1,7 @@
 import re
 import os
 import numbers
+import pandas as pd
 from ase import Atom
 from typing import List, BinaryIO
 
@@ -211,3 +212,24 @@ def tail(file_handle: BinaryIO, nlines: int, block_size: int = 32768) -> List[by
         skip = num_lines - nlines
         text = block.split(b'\n', skip)[skip].strip()
     return text.split(b'\n')
+
+
+def split_data_by_runs(points_per_run: List[int], data, labels: List[str]):
+    start = 0
+    out = dict()
+    for run_num, npoints in enumerate(points_per_run):
+        end = start + npoints
+        run = dict()
+        for label_num, key in enumerate(labels):
+            run[key] = data[label_num][start:end].to_numpy(dtype='float')
+        start = end
+        out[f"run{run_num}"] = run
+    return out
+
+
+def basic_frame_loader(lines_per_frame, directory, filename):
+    path = get_path(directory, filename)
+    data = pd.read_csv(path, delim_whitespace=True, header=None).to_numpy(dtype='float')
+    if not (data.shape[0] / lines_per_frame).is_integer():
+        raise ValueError("An integer number of frames cannot be created. Please check num_atoms.")
+    return data.reshape(-1, lines_per_frame, 3)

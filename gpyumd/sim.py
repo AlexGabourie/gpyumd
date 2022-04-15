@@ -37,7 +37,8 @@ class Simulation:
         Generates the required files for the gpumd simulation
 
         Args:
-            copy_potentials: Whether or not to copy potentials to the simulation directory
+            copy_potentials: Whether or not to copy potentials to the
+             simulation directory
         """
         self.validate_potentials()
         self.validate_runs()
@@ -105,10 +106,6 @@ class Simulation:
 
 
 class Potentials:
-    """
-    so if the atoms have not already been sorted, then we can set the type dict. Otherwise, we try to enforce the sorted
-    order. I guess the type numbers of the sorted atoms can be whatever, but it would be nice to be consistent.
-    """
 
     def __init__(self, gpumd_atoms: GpumdAtoms):
         self.potentials = list()
@@ -136,7 +133,8 @@ class Potentials:
 
     def finalize_types(self) -> None:
         """
-        Sets the type dict for the GpumdAtoms object based on the potentials that have been added.
+        Sets the type dict for the GpumdAtoms object based on the potentials
+         that have been added.
         """
         self.gpumd_atoms.set_type_dict(self.type_dict)
         # TODO Add optional args for non-lj
@@ -174,8 +172,8 @@ class StaticCalc:
 
     def __init__(self):
         """
-        Stores the list of static calculation keywords used in the run.in file. These keywords come after potential, but
-        before the runs.
+        Stores the list of static calculation keywords used in the run.in file.
+         These keywords come after potential, but before the runs.
         """
         self.keywords = dict()
 
@@ -245,11 +243,13 @@ class Run:
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
     def add_keyword(self, keyword: Keyword, final_check: bool = False) -> None:
         """
-        Adds a keyword object to the run. Verifies that the keyword is valid (to the extent that it can be initially).
+        Adds a keyword object to the run. Verifies that the keyword is valid
+         (to the extent that it can be initially).
 
         Args:
             keyword: The keyword to add to the run.
-            final_check: Use only if you know what you're doing. It is normally used to validate the run when finalized.
+            final_check: Use only if you know what you're doing. It is
+             normally used to validate the run when finalized.
         """
         if not issubclass(type(keyword), Keyword):
             raise ValueError("The 'keyword' parameter must be of the Keyword class or of its children.")

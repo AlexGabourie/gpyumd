@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-import copy
+
 import multiprocessing as mp
 from collections import deque
 from typing import List, Dict, Union, Any
@@ -10,31 +10,6 @@ import gpyumd.util as util
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
-
-#########################################
-# Helper Functions
-#########################################
-
-
-def split_data_by_runs(points_per_run: List[int], data, labels: List[str]):
-    start = 0
-    out = dict()
-    for run_num, npoints in enumerate(points_per_run):
-        end = start + npoints
-        run = dict()
-        for label_num, key in enumerate(labels):
-            run[key] = data[label_num][start:end].to_numpy(dtype='float')
-        start = end
-        out[f"run{run_num}"] = run
-    return out
-
-
-def basic_frame_loader(lines_per_frame, directory, filename):
-    path = util.get_path(directory, filename)
-    data = pd.read_csv(path, delim_whitespace=True, header=None).to_numpy(dtype='float')
-    if not (data.shape[0] / lines_per_frame).is_integer():
-        raise ValueError("An integer number of frames cannot be created. Please check num_atoms.")
-    return data.reshape(-1, lines_per_frame, 3)
 
 
 #########################################
@@ -71,7 +46,7 @@ def load_force(num_atoms: int, filename: str = "force.out", directory: str = Non
     Returns:
         Numpy array of shape (-1,n,3) containing all forces (ev/A) from filename
     """
-    return basic_frame_loader(num_atoms, directory, filename)
+    return util.basic_frame_loader(num_atoms, directory, filename)
 
 
 def load_velocity(num_atoms: int, filename: str = "velocity.out", directory: str = None) -> np.ndarray:
@@ -86,33 +61,26 @@ def load_velocity(num_atoms: int, filename: str = "velocity.out", directory: str
     Returns:
         Numpy array of shape (-1,n,3) containing all forces (A/ps) from filename
     """
-    return basic_frame_loader(num_atoms, directory, filename)
+    return util.basic_frame_loader(num_atoms, directory, filename)
 
 
 def load_compute(quantities: List[str], directory: str = None, filename: str = 'compute.out') \
         -> Dict[str, Union[Union[np.ndarray, int], Any]]:
     """
-    Loads data from compute.out GPUMD output file. Currently supports loading a single run.
+    Loads data from compute.out GPUMD output file. Currently supports
+     loading a single run.
 
     Args:
-        quantities: Quantities to extract from compute.out Accepted quantities are:
-            ['temperature', 'U', 'F', 'W', 'jp', 'jk']. Other quantity will be ignored.
-            Note: temperature=temperature, U=potential, F=force, W=virial,
-            jp=heat current (potential), jk=heat current (kinetic)
+        quantities: Quantities to extract from compute.out Accepted
+         quantities are: ['temperature', 'U', 'F', 'W', 'jp', 'jk'].
+         Other quantity will be ignored. Note: temperature=temperature,
+         U=potential, F=force, W=virial, jp=heat current (potential),
+         jk=heat current (kinetic)
         directory: Directory to load compute file from
         filename: file to load compute from
 
     Returns:
         Dictionary containing the data from compute.out
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,temperature,U,F,W,jp,jk,Ein,Eout
-       **units**,K,eV,|c1|,eV,|c2|,|c2|,eV,eV
-
-    .. |c1| replace:: eVA\ :sup:`-1`
-    .. |c2| replace:: eV\ :sup:`3/2` amu\ :sup:`-1/2`
     """
     quantities = util.check_list(quantities, varname='quantities', dtype=str)
     compute_path = util.get_path(directory, filename)
@@ -207,7 +175,7 @@ def load_sdc(num_corr_points: Union[int, List[int]],
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
     util.check_range(num_corr_points, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz', 'SDCx', 'SDCy', 'SDCz']
-    return split_data_by_runs(num_corr_points, data, labels)
+    return util.split_data_by_runs(num_corr_points, data, labels)
 
 
 def load_vac(num_corr_points: Union[int, List[int]],
@@ -237,7 +205,7 @@ def load_vac(num_corr_points: Union[int, List[int]],
     data = pd.read_csv(sdc_path, delim_whitespace=True, header=None)
     util.check_range(num_corr_points, data.shape[0])
     labels = ['t', 'VACx', 'VACy', 'VACz']
-    return split_data_by_runs(num_corr_points, data, labels)
+    return util.split_data_by_runs(num_corr_points, data, labels)
 
 
 def load_dos(num_dos_points: Union[int, List[int]],
@@ -267,7 +235,7 @@ def load_dos(num_dos_points: Union[int, List[int]],
     data = pd.read_csv(dos_path, delim_whitespace=True, header=None)
     util.check_range(num_dos_points, data.shape[0])
     labels = ['nu', 'DOSx', 'DOSy', 'DOSz']
-    out = split_data_by_runs(num_dos_points, data, labels)
+    out = util.split_data_by_runs(num_dos_points, data, labels)
     for key in out.keys():
         out[key]['nu'] /= (2 * np.pi)
     return out
@@ -676,27 +644,3 @@ def load_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", dir
     return {'fq': fq, 'fmax': fmax, 'fmin': fmin, 'shift': shift,
             'nbins': nbins, 'bin_count': bin_count, 'bin_f_size': bin_f_size}
 
-
-def reduce_frequency_info(freq: dict, ndiv: int = 1) -> dict:
-    """
-    Recalculates frequency binning information based on how many times larger bins are wanted.
-
-    Args:
-        freq: Dictionary with frequency binning information from the get_frequency_info function output
-        ndiv: Divisor used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
-            need not be an integer
-
-    Returns:
-        Dictionary with the system eigen freqeuency information along with binning information
-    """
-    epsilon = 1.e-6  # tolerance for float errors
-    freq = copy.deepcopy(freq)
-    freq['bin_f_size'] = freq['bin_f_size'] * ndiv
-    freq['fmax'] = (np.floor(np.abs(freq['fq'][-1]) / freq['bin_f_size']) + 1) * freq['bin_f_size']
-    nbins_new = int(np.ceil(freq['nbins'] / ndiv - epsilon))
-    npad = nbins_new * ndiv - freq['nbins']
-    freq['nbins'] = nbins_new
-    freq['bin_count'] = np.pad(freq['bin_count'], [(0, npad)])
-    freq['bin_count'] = np.sum(freq['bin_count'].reshape(-1, ndiv), axis=1)
-    freq['ndiv'] = ndiv
-    return freq
