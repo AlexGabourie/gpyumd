@@ -2,7 +2,7 @@ import operator as op
 import numpy as np
 from ase import Atoms, Atom
 from abc import ABC, abstractmethod
-from gpyumd.util import check_list, check_range, get_path, cond_assign_int, cond_assign, check_symbols
+from gpyumd import util
 from numpy import prod
 from typing import List, Union, Tuple, Dict
 
@@ -88,8 +88,8 @@ class GroupByPosition(GroupMethod):
 
     def get_group(self, position):
         """
-        Gets the group that an atom belongs to based on its position. Only works in
-        one direction as it is used for NEMD.
+        Gets the group that an atom belongs to based on its position. Only
+        works in one direction as it is used for NEMD.
 
         Args:
             position: list of floats of length 3
@@ -233,7 +233,7 @@ class GpumdAtoms(Atoms):
         Args:
             max_neighbors: Maximum number of neighbors
         """
-        self.max_neighbors = cond_assign_int(max_neighbors, 1, op.ge, 'max_neighbors')
+        self.max_neighbors = util.cond_assign_int(max_neighbors, 1, op.ge, 'max_neighbors')
 
     def set_cutoff(self, cutoff: float) -> None:
         """
@@ -242,7 +242,7 @@ class GpumdAtoms(Atoms):
         Args:
             cutoff: The cutoff to use in the xyz.in file
         """
-        self.cutoff = cond_assign(cutoff, 0, op.gt, 'cutoff')
+        self.cutoff = util.cond_assign(cutoff, 0, op.gt, 'cutoff')
 
     @staticmethod
     def __atom_symbol_sortkey(atom: Atom, order: List[str]) -> int:
@@ -267,8 +267,10 @@ class GpumdAtoms(Atoms):
 
         Args:
             atom: atom to determine order of
-            group: Store the group information of each atom (1-to-1 correspondence)
-            order: A list of ints in desired order for groups at group_index
+            group: Store the group information of each atom (1-to-1
+                correspondence)
+            order: A list of ints in desired order for groups at
+                group_index
 
         Returns:
             position of atom in the selected order
@@ -336,8 +338,10 @@ class GpumdAtoms(Atoms):
         Args:
             sort_key: How to sort atoms ('group', 'type')
             order:
-                For sort_key=='type', a list of atomic symbol strings in the desired order. Ex: ["Mo", "S", "Si", "O"].
-                For sort_key=='group', a list of ints in desired order for groups at group_index. Ex: [1,3,2,4]
+                For sort_key=='type', a list of atomic symbol strings in the
+                    desired order. Ex: ["Mo", "S", "Si", "O"].
+                For sort_key=='group', a list of ints in desired order for
+                    groups at group_index. Ex: [1,3,2,4]
             group_method: Selects the group to sort in the output.
         """
         if not sort_key and not order and not group_method:
@@ -374,7 +378,7 @@ class GpumdAtoms(Atoms):
         """
         if not (sorted(type_dict.values()) == list(range(len(set(type_dict.values()))))):
             raise ValueError("type_dict must have a set of contiguous positive integers (including zero).")
-        check_symbols(list(type_dict.keys()))
+        util.check_symbols(list(type_dict.keys()))
         if len(type_dict.keys()) > len(set(type_dict.keys())):
             raise ValueError("type_dict cannot have duplicate symbol entries.")
         for symbol in type_dict.keys():
@@ -389,7 +393,8 @@ class GpumdAtoms(Atoms):
         Creates and xyz.in file.
 
         Args:
-            has_velocity: Whether or not to set the velocities in the xyz.in file.
+            has_velocity: Whether or not to set the velocities in the xyz.in
+                file.
             gpumd_file: File to save the structure data to
             directory: Directory to store output
         """
@@ -410,7 +415,7 @@ class GpumdAtoms(Atoms):
             summary += f"{lx} {ly} {lz}"
 
         # write structure
-        filename = get_path(directory, gpumd_file)
+        filename = util.get_path(directory, gpumd_file)
         with open(filename, 'w') as f:
             f.writelines(summary)
             for atom in self:
@@ -444,8 +449,8 @@ class GpumdAtoms(Atoms):
         """
         Assigns a basis index for each atom in atoms. Updates atoms.
 
-        See https://github.com/brucefan1983/GPUMD/tree/master/examples/empirical_potentials/phonon_dispersion and
-        https://gpumd.zheyongfan.org/index.php/The_basis.in_input_file for more details.
+        https://github.com/brucefan1983/GPUMD/tree/master/examples/empirical_potentials/phonon_dispersion
+        https://gpumd.zheyongfan.org/index.php/The_basis.in_input_file
 
         Args:
             index: Atom indices of those in the unit cell.
@@ -477,13 +482,13 @@ class GpumdAtoms(Atoms):
         Returns:
             New repeated GpumdAtoms
         """
-        rep = check_list(rep, varname='rep', dtype=int)
+        rep = util.check_list(rep, varname='rep', dtype=int)
         replen = len(rep)
         if replen == 1:
             rep = rep * 3
         elif not replen == 3:
             raise ValueError("The rep parameter must be a sequence of 1 or 3 integers.")
-        check_range(rep, 2 ** 64)
+        util.check_range(rep, 2 ** 64)
         supercell = GpumdAtoms(self.repeat(rep))
         supercell.unitcell = self.unitcell
         for i in range(1, prod(rep, dtype=int)):
@@ -498,8 +503,9 @@ class GpumdAtoms(Atoms):
         Returns a bookkeeping parameter, but atoms will be udated in-place.
 
         Args:
-            split: List of boundaries in ascending order. First element should be lower boundary of sim.
-                box in specified direction and the last the upper.
+            split: List of boundaries in ascending order. First element should
+                be lower boundary of simulation box in specified direction and
+                the last the upper.
             direction: Which direction the split will work
 
         Returns:
@@ -523,7 +529,7 @@ class GpumdAtoms(Atoms):
 
     def group_by_symbol(self, symbols: dict) -> Tuple[int, np.ndarray]:
         """
-       Assigns groups to all atoms based on atom symbols. Returns a
+        Assigns groups to all atoms based on atom symbols. Returns a
         bookkeeping parameter, but atoms will be udated in-place.
 
         Args:
@@ -550,19 +556,21 @@ class GpumdAtoms(Atoms):
     def write_kpoints(self, path: str = 'G', npoints: int = 1, special_points: dict = None,
                       filename: str = 'kpoints.in', directory: str = None) -> Tuple[np.ndarray, None, List[str]]:
         """
-        Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
+        Creates the file "kpoints.in", which specifies the kpoints needed for
+        the 'phonon' keyword
 
         Args:
             path: String of special point names defining the path, e.g. 'GXL'
-            npoints: Number of points in total.  Note that at least one point is added for each special point in the
-                path
-            special_points: Dictionary mapping special points to scaled kpoint coordinates.
-                For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
+            npoints: Number of points in total.  Note that at least one point
+                is added for each special point in the path
+            special_points: Dictionary mapping special points to scaled kpoint
+                coordinates. For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
             filename: File to save the structure data to
             directory: Directory to store output
 
         Returns:
-            kpoints converted to x-coordinates, x-coordinates of the high symmetry points, labels of those points.
+            kpoints converted to x-coordinates, x-coordinates of the high
+                symmetry points, labels of those points.
         """
         tol = 1e-15
         path = self.cell.bandpath(path, npoints, special_points=special_points)
@@ -570,12 +578,13 @@ class GpumdAtoms(Atoms):
         gpumd_kpts = np.matmul(path.kpts, b)
         gpumd_kpts[np.abs(gpumd_kpts) < tol] = 0.0
         # noinspection PyTypeChecker
-        np.savetxt(get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
+        np.savetxt(util.get_path(directory, filename), gpumd_kpts, header=str(npoints), comments='', fmt='%g')
         return path.get_linear_kpoint_axis()
 
     def write_basis(self, filename: str = "basis.in", directory: str = None) -> None:
         """
-        Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
+        Creates the basis.in file. Atoms passed to this must already have the
+        basis of every atom defined.\n
         Related: atoms.add_basis, atoms.repeat
 
         Args:
@@ -586,7 +595,7 @@ class GpumdAtoms(Atoms):
             raise ValueError("Both the unit cell and basis must be defined to write the basis.in file. "
                              "See the 'add_basis' function.")
         masses = self.get_masses()
-        with open(get_path(directory, filename), 'w') as f:
+        with open(util.get_path(directory, filename), 'w') as f:
             f.writelines(f"{len(self.unitcell)}\n")
             for basis_id in self.unitcell:
                 f.writelines(f"{basis_id} {masses[basis_id]}\n")

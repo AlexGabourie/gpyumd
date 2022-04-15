@@ -27,7 +27,7 @@ class Simulation:
         self.directory = util.create_directory(directory) if directory else os.getcwd()
         self.runs = list()
         self.static_calc = None
-        if not isinstance(gpumd_atoms, Atoms) or not isinstance(gpumd_atoms, GpumdAtoms):
+        if not (isinstance(gpumd_atoms, Atoms) or isinstance(gpumd_atoms, GpumdAtoms)):
             raise ValueError("The 'atoms' parameter must be of ase.Atoms or GpumdAtoms type.")
         self.atoms = copy.deepcopy(GpumdAtoms(gpumd_atoms))
         self.potentials = None

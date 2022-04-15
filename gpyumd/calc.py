@@ -22,8 +22,9 @@ def calc_gkma_kappa(data: dict,
                     directory: str = None,
                     return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
-    Calculate the Green-Kubo thermal conductivity from modal heat
-    current data from 'load_heatmode'
+    Calculate the Green-Kubo thermal conductivity from modal heat current
+    data from 'load_heatmode'
+
 
     Args:
         data: Dictionary with heat currents loaded by 'load_heatmode'
