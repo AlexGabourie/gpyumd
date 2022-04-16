@@ -12,7 +12,9 @@ __email__ = "agabourie47@gmail.com"
 #########################################
 
 
-def read_gpumd(atom_symbols: List[Union[str, int]] = None, gpumd_file: str = "xyz.in", directory: str = None):
+def read_gpumd(atom_symbols: List[Union[str, int]] = None,
+               gpumd_file: str = "xyz.in",
+               directory: str = None) -> GpumdAtoms:
     """
     Reads and returns the structure input file from GPUMD.
 
@@ -24,7 +26,7 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None, gpumd_file: str = "xy
         directory: Directory of output
 
     Returns:
-        tuple: GpumdAtoms
+        GpumdAtoms
     """
     filepath = util.get_path(directory, gpumd_file)
     with open(filepath) as f:
@@ -73,20 +75,19 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None, gpumd_file: str = "xy
     return gpumd_atoms
 
 
-def read_movie(filename='movie.xyz', directory=None, atom_symbols=None):
+def read_movie(filename: str = "movie.xyz",
+               directory: str = None,
+               atom_symbols: List[Union[str, int]] = None) -> List[GpumdAtoms]:
     """
     Reads the trajectory from GPUMD run and creates a list of ASE atoms.
 
     Args:
-        filename (str):
-            Name of the file that holds the GPUMD trajectory.
-
-        directory: string
-            Directory of output. Assumes the in_file and movie.xyz file are in the same directory.
-
-        atom_symbols: list of strings or ints
-            List of atom symbols/atomic number used in the xyz.in file. Ex: ['Mo', 'S', 'Si', 'O'].
-            Uses GPUMD type directly, if not provided.
+        filename: Name of the file that holds the GPUMD trajectory.
+        directory: Directory of output. Assumes the in_file and
+         movie.xyz file are in the same directory.
+        atom_symbols: List of atom symbols/atomic number used in
+         the xyz.in file. Ex: ['Mo', 'S', 'Si', 'O']. Uses GPUMD
+         type directly, if not provided.
 
     Returns:
         List of GpumdAtoms
@@ -107,7 +108,7 @@ def read_movie(filename='movie.xyz', directory=None, atom_symbols=None):
             positions[index, 2] = float(z)
             if block == 0:  # Order of atoms is the same for every frame in GPUMD
                 symbols.append(atom_symbols[int(gpumd_type)] if atom_symbols else int(gpumd_type))
-        trajectory.append(Atoms(symbols=symbols, positions=positions))
+        trajectory.append(GpumdAtoms(symbols=symbols, positions=positions))
     return trajectory
 
 
