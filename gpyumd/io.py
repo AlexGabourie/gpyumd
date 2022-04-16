@@ -1,5 +1,5 @@
-from typing import List, Union
-from ase import Atom, Atoms
+from typing import List, Union, Optional, Mapping, Sequence, Tuple
+from ase import Atom
 import numpy as np
 from gpyumd.atoms import GpumdAtoms, GroupGeneric
 from gpyumd import util
@@ -116,75 +116,59 @@ def read_movie(filename: str = "movie.xyz",
 # Write Related
 #########################################
 
-def write_gpumd(gpumd_atoms, has_velocity=False, gpumd_file='xyz.in', directory=None):
+def write_gpumd(gpumd_atoms: GpumdAtoms, use_velocity: bool = False,
+                gpumd_file: str = "xyz.in", directory: str = None) -> None:
     """
-    Creates and xyz.in file. Note: both max_neighbors and cutoff must be set for the file to be written.
+    Creates and xyz.in file. Note: both max_neighbors and cutoff must be
+    set for the file to be written.
 
     Args:
-        gpumd_atoms: GpumdAtoms
-            The structure to write to file.
-
-        has_velocity: boolean
-            Whether or not to set the velocities in the xyz.in file.
-
-        gpumd_file: string
-            File to save the structure data to
-
-        directory: string
-            Directory to store output
+        gpumd_atoms: The structure to write to file.
+        use_velocity: Whether or not to set the velocities in the xyz.in
+         file.
+        gpumd_file: File to save the structure data to
+        directory:  Directory to store output
     """
     if not (isinstance(gpumd_atoms, GpumdAtoms)):
         raise ValueError("GpumdAtoms object is required to write an xyz.in file.")
-    gpumd_atoms.write_gpumd(has_velocity, gpumd_file, directory)
+    gpumd_atoms.write_gpumd(use_velocity, gpumd_file, directory)
 
 
-def create_kpoints(gpumd_atoms, path='G', npoints=1, special_points=None, filename='kpoints.in', directory=None):
+def write_kpoints(gpumd_atoms: GpumdAtoms, path: str = "G", npoints: int = 1,
+                  special_points: Optional[Mapping[str, Sequence[float]]] = None,
+                  filename: str = "kpoints.in", directory: str = None) -> Tuple[np.ndarray, None, List[str]]:
     """
-     Creates the file "kpoints.in", which specifies the kpoints needed for the 'phonon' keyword
+     Creates the file "kpoints.in", which specifies the kpoints needed
+     for the 'phonon' keyword
 
     Args:
-        gpumd_atoms: GpumdAtoms
-            Unit cell to use for phonon calculation
-
-        path: str
-            String of special point names defining the path, e.g. 'GXL'
-
-        npoints: int
-            Number of points in total.  Note that at least one point
-            is added for each special point in the path
-
-        special_points: dict
-            Dictionary mapping special points to scaled kpoint coordinates.
-            For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
-
-        filename: string
-            File to save the structure data to
-
-        directory: string
-            Directory to store output
+        gpumd_atoms: Unit cell to use for phonon calculation
+        path: String of special point names defining the path, e.g. 'GXL'
+        npoints: Number of points in total.  Note that at least one point
+         is added for each special point in the path
+        special_points: Map of special points to scaled kpoint
+         coordinates. For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
+        filename: File to save the structure data to
+        directory: Directory to store output
 
     Returns:
-        kpoints converted to x-coordinates, x-coordinates of the high symmetry points, labels of those points.
+        kpoints converted to x-coordinates, x-coordinates of the high
+         symmetry points, labels of those points.
     """
     if not (isinstance(gpumd_atoms, GpumdAtoms)):
         raise ValueError("GpumdAtoms object is required to write a kpoints.in file.")
     return gpumd_atoms.write_kpoints(path, npoints, special_points, filename, directory)
 
 
-def write_basis(gpumd_atoms, filename='basis.in', directory=None):
+def write_basis(gpumd_atoms: GpumdAtoms, filename: str = "basis.in", directory: str = None) -> None:
     """
-    Creates the basis.in file. Atoms passed to this must already have the basis of every atom defined.\n
-    Related: atoms.add_basis, atoms.repeat
+    Creates the basis.in file. Atoms passed to this must already have the
+    basis of every atom defined. Related: atoms.add_basis, atoms.repeat
 
     Args:
-        gpumd_atoms: GpumdAtoms
-            Atoms of unit cell used to generate basis.in
-
-        filename: string
-            File to save the structure data to
-
-        directory: string
-            Directory to store output
+        gpumd_atoms: Atoms of unit cell used to generate basis.in
+        filename: File to save the structure data to
+        directory: Directory to store output
     """
     if not (isinstance(gpumd_atoms, GpumdAtoms)):
         raise ValueError("GpumdAtoms object is required to write a basis.in file.")

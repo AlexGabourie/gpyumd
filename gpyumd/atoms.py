@@ -4,7 +4,7 @@ from ase import Atoms, Atom
 from abc import ABC, abstractmethod
 from gpyumd import util
 from numpy import prod
-from typing import List, Union, Tuple, Dict
+from typing import List, Union, Tuple, Dict, Optional, Mapping, Sequence
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
@@ -389,12 +389,12 @@ class GpumdAtoms(Atoms):
             raise ValueError("Set of symbols must match those of the GpumdAtoms object.")
         self.type_dict = type_dict
 
-    def write_gpumd(self, has_velocity: bool = False, gpumd_file: str = 'xyz.in', directory: str = None) -> None:
+    def write_gpumd(self, use_velocity: bool = False, gpumd_file: str = "xyz.in", directory: str = None) -> None:
         """
         Creates and xyz.in file.
 
         Args:
-            has_velocity: Whether or not to set the velocities in the xyz.in
+            use_velocity: Whether or not to set the velocities in the xyz.in
                 file.
             gpumd_file: File to save the structure data to
             directory: Directory to store output
@@ -406,7 +406,7 @@ class GpumdAtoms(Atoms):
         pbc = self.get_pbc()
         lx, ly, lz, a1, a2, a3 = tuple(self.cell.cellpar())
         summary = f"{len(self)} {self.max_neighbors} {self.cutoff} {int(self.triclinic)} " \
-                  f"{int(has_velocity)} {self.num_group_methods}\n" \
+                  f"{int(use_velocity)} {self.num_group_methods}\n" \
                   f"{int(pbc[0])} {int(pbc[1])} {int(pbc[2])} "
 
         if self.triclinic:
@@ -422,7 +422,7 @@ class GpumdAtoms(Atoms):
             for atom in self:
                 pos = atom.position
                 line = f"\n{self.type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass} "
-                if has_velocity:
+                if use_velocity:
                     vel = [p / atom.mass for p in atom.momentum]
                     line += f"{vel[0]} {vel[1]} {vel[2]} "
                 for group in self.group_methods:
@@ -554,8 +554,9 @@ class GpumdAtoms(Atoms):
         group_idx = self.add_group_method(group)
         return group_idx, group.counts
 
-    def write_kpoints(self, path: str = 'G', npoints: int = 1, special_points: dict = None,
-                      filename: str = 'kpoints.in', directory: str = None) -> Tuple[np.ndarray, None, List[str]]:
+    def write_kpoints(self, path: str = "G", npoints: int = 1,
+                      special_points: Optional[Mapping[str, Sequence[float]]] = None,
+                      filename: str = "kpoints.in", directory: str = None) -> Tuple[np.ndarray, None, List[str]]:
         """
         Creates the file "kpoints.in", which specifies the kpoints needed for
         the 'phonon' keyword
@@ -564,14 +565,14 @@ class GpumdAtoms(Atoms):
             path: String of special point names defining the path, e.g. 'GXL'
             npoints: Number of points in total.  Note that at least one point
                 is added for each special point in the path
-            special_points: Dictionary mapping special points to scaled kpoint
+            special_points: Map of special points to scaled kpoint
                 coordinates. For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
             filename: File to save the structure data to
             directory: Directory to store output
 
         Returns:
             kpoints converted to x-coordinates, x-coordinates of the high
-                symmetry points, labels of those points.
+             symmetry points, labels of those points.
         """
         tol = 1e-15
         path = self.cell.bandpath(path, npoints, special_points=special_points)
