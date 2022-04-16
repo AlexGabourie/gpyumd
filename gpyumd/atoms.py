@@ -127,7 +127,8 @@ class GpumdAtoms(Atoms):
                  info=None,
                  velocities=None):
         """
-        A thin wrapper class around the ASE Atoms object. Stores additional information
+        A thin wrapper class around the ASE Atoms object. Stores additional
+        information
 
         ----- Atoms Documentation -----
         Atoms object.

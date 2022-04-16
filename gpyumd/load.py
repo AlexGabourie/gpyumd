@@ -25,8 +25,9 @@ def load_omega2(filename: str = "omega2.out", directory: str = None) -> np.ndarr
         directory: Directory to load force file from
 
     Returns:
-        Array of shape (N_kpoints,3*N_basis) in units of THz. N_kpoints is number of k points in kpoint.in and
-        N_basis is the number of basis atoms defined in basis.in
+        Array of shape (N_kpoints,3*N_basis) in units of THz. N_kpoints is
+        number of k points in kpoint.in and N_basis is the number of basis
+        atoms defined in basis.in
     """
     path = util.get_path(directory, filename)
     data = pd.read_csv(path, delim_whitespace=True, header=None).to_numpy(dtype='float')
@@ -72,22 +73,22 @@ def load_compute(quantities: List[str], directory: str = None, filename: str = '
 
     Args:
         quantities: Quantities to extract from compute.out Accepted
-         quantities are: ['temperature', 'U', 'F', 'W', 'jp', 'jk'].
-         Other quantity will be ignored. Note: temperature=temperature,
-         U=potential, F=force, W=virial, jp=heat current (potential),
-         jk=heat current (kinetic)
+         quantities are: ['temperature', 'potential', 'force', 'virial',
+         'jp', 'jk']. Other quantities will be ignored.
         directory: Directory to load compute file from
         filename: file to load compute from
 
     Returns:
-        Dictionary containing the data from compute.out
+        Dictionary containing the data from compute.out. Units are
+         [temperature -> K], [potential, virial, Ein, Eout -> eV],
+         [force -> eV/A], [jp, jk -> (eV^(3/2))(amu^(-1/2))]
     """
     quantities = util.check_list(quantities, varname='quantities', dtype=str)
     compute_path = util.get_path(directory, filename)
     data = pd.read_csv(compute_path, delim_whitespace=True, header=None)
 
     num_col = len(data.columns)
-    q_count = {'temperature': 1, 'U': 1, 'F': 3, 'W': 3, 'jp': 3, 'jk': 3}
+    q_count = {'temperature': 1, 'potential': 1, 'force': 3, 'virial': 3, 'jp': 3, 'jk': 3}
 
     count = 0
     for value in quantities:
@@ -122,14 +123,9 @@ def load_thermo(filename: str = "thermo.out", directory: str = None) -> Dict[str
         directory: Directory to load thermal data file from
 
     Returns:
-        'output' dictionary containing the data from thermo.out
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,temperature,K,U,Px,Py,Pz,Lx,Ly,Lz,ax,ay,az,bx,by,bz,cx,cy,cz
-       **units**,K,eV,eV,GPa,GPa,GPa,A,A,A,A,A,A,A,A,A,A,A,A
-
+        Dict containing the data from thermo.out. Units are [temperature
+         -> K], [K, U -> eV], [Px, Py, Pz -> GPa], [Lx, Ly, Lz, ax, ay, az,
+         bx, by, bz, cx, cy, cz -> A]
     """
     thermo_path = util.get_path(directory, filename)
     data = pd.read_csv(thermo_path, delim_whitespace=True, header=None)
@@ -154,21 +150,16 @@ def load_sdc(num_corr_points: Union[int, List[int]],
     Loads data from sdc.out GPUMD output file.
 
     Args:
-        num_corr_points: Number of time correlation points the VAC/SDC is computed for
+        num_corr_points: Number of time correlation points the VAC/SDC is
+         computed for
         filename: File to load SDC from
-        directory: Directory to load 'sdc.out' file from (dir. of simulation)
+        directory: Directory to load 'sdc.out' file from (dir. of
+         simulation)
 
     Returns:
-        Dictonary with SDC/VAC data. The outermost dictionary stores each individual run
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,t,VACx,VACy,VACz,SDCx,SDCy,SDCz
-       **units**,ps,|sd1|,|sd1|,|sd1|,|sd2|,|sd2|,|sd2|
-
-    .. |sd1| replace:: A\ :sup:`2` ps\ :sup:`-2`
-    .. |sd2| replace:: A\ :sup:`2` ps\ :sup:`-1`
+        Dictonary with SDC/VAC data. The outermost dictionary stores each
+         individual run. Units are [t -> ps], [VACx, VACy, VACz -> (A^2)
+         (ps^-2)], [SDCx, SDCy, SDCz -> (A^2)(ps^-1)]
     """
     num_corr_points = util.check_list(num_corr_points, varname='nc', dtype=int)
     sdc_path = util.get_path(directory, filename)
@@ -185,20 +176,15 @@ def load_vac(num_corr_points: Union[int, List[int]],
     Loads data from mvac.out GPUMD output file.
 
     Args:
-        num_corr_points: Number of time correlation points the VAC is computed for
+        num_corr_points: Number of time correlation points the VAC is
+         computed for
         filename: File to load VAC from
         directory: Directory to load 'mvac.out' file from
 
     Returns:
-        Dictonary with VAC data. The outermost dictionary stores each individual run
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,t,VACx,VACy,VACz
-       **units**,ps,|v1|,|v1|,|v1|
-
-    .. |v1| replace:: A\ :sup:`2` ps\ :sup:`-2`
+        Dictonary with VAC data. The outermost dictionary stores each
+         individual run. Units are [t -> ps], [VACx, VACy, VACz ->
+         (A^2)(ps^-2)]
     """
     num_corr_points = util.check_list(num_corr_points, varname='nc', dtype=int)
     sdc_path = util.get_path(directory, filename)
@@ -217,18 +203,13 @@ def load_dos(num_dos_points: Union[int, List[int]],
     Args:
         num_dos_points: Number of frequency points the DOS is computed for.
         filename: File to load DOS from.
-        directory: Directory to load 'dos.out' file from (dir. of simulation)
+        directory: Directory to load 'dos.out' file from (dir. of
+         simulation)
 
     Returns:
-        Dictonary with DOS data. The outermost dictionary stores each individual run.
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,nu,DOSx,DOSy,DOSz
-       **units**,THz,|d1|,|d1|,|d1|
-
-    .. |d1| replace:: THz\ :sup:`-1`
+        Dictonary with DOS data. The outermost dictionary stores each
+         individual run. Units are [nu -> THz], [DOSx, DOSy, DOSz ->
+         THz^-1]
     """
     num_dos_points = util.check_list(num_dos_points, varname='num_dos_points', dtype=int)
     dos_path = util.get_path(directory, filename)
@@ -247,22 +228,17 @@ def load_shc(num_corr_points: Union[int, List[int]], num_omega: Union[int, List[
     Loads the data from shc.out GPUMD output file.
 
     Args:
-        num_corr_points: Maximum number of correlation steps. If multiple shc runs, can provide a list of nc.
-        num_omega: Number of frequency points. If multiple shc runs, can provide a list of num_omega.
+        num_corr_points: Maximum number of correlation steps. If multiple
+         shc runs, can provide a list of nc.
+        num_omega: Number of frequency points. If multiple shc runs, can
+         provide a list of num_omega.
         filename: File to load SHC from.
         directory: Directory to load 'shc.out' file from (dir. of simulation)
 
     Returns:
-        Dictionary of in- and out-of-plane shc results (average)
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,t, Ki, Ko, nu, jwi, jwo
-       **units**,ps, |sh1|,|sh1|, THz, |sh2|, |sh2|
-
-    .. |sh1| replace:: A eV ps\ :sup:`-1`
-    .. |sh2| replace:: A eV ps\ :sup:`-1` THz\ :sup:`-1`
+        Dictionary of in- and out-of-plane shc results (average).
+         [t -> ps], [Ki, Ko -> A eV ps^-1], [nu -> THz], [jwi, jwo
+         -> A eV (ps^-1)(THz^-1)]
     """
     num_corr_points = util.check_list(num_corr_points, varname='nc', dtype=int)
     num_omega = util.check_list(num_omega, varname='num_omega', dtype=int)
@@ -271,7 +247,7 @@ def load_shc(num_corr_points: Union[int, List[int]], num_omega: Union[int, List[
     shc_path = util.get_path(directory, filename)
     data = pd.read_csv(shc_path, delim_whitespace=True, header=None)
     util.check_range(np.array(num_corr_points) * 2 - 1 + np.array(num_omega), data.shape[0])
-    if not all([i>0 for i in num_corr_points]) or not all([i > 0 for i in num_omega]):
+    if not all([i > 0 for i in num_corr_points]) or not all([i > 0 for i in num_omega]):
         raise ValueError('Only strictly positive numbers are allowed.')
     labels_corr = ['t', 'Ki', 'Ko']
     labels_omega = ['nu', 'jwi', 'jwo']
@@ -304,15 +280,8 @@ def load_kappa(filename: str = "kappa.out", directory: str = None) -> Dict[str, 
         directory: Directory containing kappa data file
 
     Returns:
-        A dictionary with keys corresponding to the columns in 'kappa.out'
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,kxi, kxo, kyi, kyo, kz
-       **units**,|k1|,|k1|,|k1|,|k1|,|k1|
-
-    .. |k1| replace:: Wm\ :sup:`-1` K\ :sup:`-1`
+        Dictionary with keys corresponding to the columns in 'kappa.out'.
+         Units are [kxi, kxo, kyi, kyo, kz -> W(m^-1)(K^-1)]
     """
     kappa_path = util.get_path(directory, filename)
     data = pd.read_csv(kappa_path, delim_whitespace=True, header=None)
@@ -335,16 +304,9 @@ def load_hac(num_corr_points: Union[int, List[int]], output_interval: Union[int,
         directory: Directory containing hac data file
 
     Returns:
-        A dictionary containing the data from hac runs
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,t, kxi, kxo, kyi, kyo, kz, jxijx, jxojx, jyijy, jyojy, jzjz
-       **units**,ps,|h1|,|h1|,|h1|,|h1|,|h1|,|h2|,|h2|,|h2|,|h2|,|h2|
-
-    .. |h1| replace:: Wm\ :sup:`-1` K\ :sup:`-1`
-    .. |h2| replace:: eV\ :sup:`3` amu\ :sup:`-1`
+        Dictionary containing the data from hac runs. Units are [t -> ps],
+         [kxi, kxo, kyi, kyo, kz -> W(m^-1)(K^-1)], [jxijx, jxojx, jyijy,
+         jyojy, jzjz -> (eV^3)(amu^-1)]
     """
     num_corr_points = util.check_list(num_corr_points, varname='nc', dtype=int)
     output_interval = util.check_list(output_interval, varname='output_interval', dtype=int)
@@ -372,7 +334,8 @@ def load_hac(num_corr_points: Union[int, List[int]], output_interval: Union[int,
 def read_modal_analysis_file(nbins: int, nsamples: int, datapath: str, ndiv: int, multiprocessing: bool = False,
                              ncore: int = None, block_size: int = 65536) -> np.ndarray:
     """
-    Core reader for the modal analysis methods. Recommend using the load_heatmode or load_kappamode functions instead.
+    Core reader for the modal analysis methods. Recommend using the
+     load_heatmode or load_kappamode functions instead.
 
     Args:
         nbins: Number of frequency bins
@@ -384,7 +347,8 @@ def read_modal_analysis_file(nbins: int, nsamples: int, datapath: str, ndiv: int
         block_size: Number of bytes to read at once from the output files
 
     Returns:
-        3D array with of data with dimension (nbins, nsamples, 5). Note: ndiv will change nbins.
+        3D array with of data with dimension (nbins, nsamples, 5). Note:
+         ndiv will change nbins.
     """
 
     def process_sample(sample_num: int) -> np.ndarray:
@@ -449,40 +413,40 @@ def load_heatmode(nbins: int,
                   block_size: int = None,
                   return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
-    Loads data from heatmode.out GPUMD file. Option to save as binary file for fast re-load later.
-    WARNING: If using multiprocessing, memory usage may be significantly larger than file size
+    Loads data from heatmode.out GPUMD file. Option to save as binary
+    file for fast re-load later. WARNING: If using multiprocessing,
+    memory usage may be significantly larger than file size.
 
     Args:
         nbins: Number of bins used during the GPUMD simulation
-        nsamples: Number of times heat flux was sampled with GKMA during GPUMD simulation
+        nsamples: Number of times heat flux was sampled with GKMA during
+         GPUMD simulation
         inputfile: Modal heat flux file output by GPUMD
         directory: Name of directory storing the input file to read
-        directions: Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed
-            (i.e. 'xz' is accepted)
-        ndiv: Integer used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
-            need not be an integer
-        outputfile: File name to save read data to. Output file is a binary dictionary. Loading from a binary file is
-            much faster than re-reading data files and saving is recommended
-        save: Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
-        multiprocessing: Toggle using multi-core processing for conversion of text file
-        ncore: Number of cores to use for multiprocessing. Ignored if multiprocessing is False
-        block_size: Size of block (in bytes) to be read per read operation. File reading performance depend on this
-            parameter and file size
-        return_data: Toggle returning the loaded modal heat flux data. If this is False, the user should ensure that
-            save is True
+        directions: Directions to gather data from. Any order of 'xyz' is
+         accepted. Excluding directions also allowed (i.e. 'xz' is accepted)
+        ndiv: Integer used to shrink number of bins output. If originally
+         have 10 bins, but want 5, ndiv=2. nbins/ndiv need not be an integer
+        outputfile: File name to save read data to. Output file is a binary
+         dictionary. Loading from a binary file is much faster than
+         re-reading data files and saving is recommended
+        save: Toggle saving data to binary dictionary. Loading from save
+         file is much faster and recommended
+        multiprocessing: Toggle using multi-core processing for conversion
+         of text file
+        ncore: Number of cores to use for multiprocessing. Ignored if
+         multiprocessing is False
+        block_size: Size of block (in bytes) to be read per read operation.
+         File reading performance depend on this parameter and file size
+        return_data: Toggle returning the loaded modal heat flux data. If
+            this is False, the user should ensure that save is True
 
         Returns:
-            Dictionary with all modal heat fluxes requested
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,nbins, nsamples, jmxi, jmxo, jmyi, jmyo, jmz
-       **units**,N/A, N/A,|jm1|,|jm1|,|jm1|,|jm1|,|jm1|
-
-    .. |jm1| replace:: eV\ :sup:`3/2` amu\ :sup:`-1/2` *x*\ :sup:`-1`
-
-    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
+            Dictionary with all modal heat fluxes requested. Units are
+             [nbins, nsamples -> N/A], [jmxi, jmxo, jmyi, jmyo, jmz ->
+             (eV^3/2)(amu^-1/2)(*x*^-1)]. Here *x* is the size of the
+             bins in THz. For example, if there are 4 bins per THz,
+             *x* = 0.25 THz.
     """
     jm_path = util.get_path(directory, inputfile)
     out_path = util.get_path(directory, outputfile)
@@ -520,40 +484,41 @@ def load_kappamode(nbins: int,
                    block_size: int = None,
                    return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
-    Loads data from kappamode.out GPUMD file. Option to save as binary file for fast re-load later.
-    WARNING: If using multiprocessing, memory useage may be significantly larger than file size
+    Loads data from kappamode.out GPUMD file. Option to save as binary file
+    for fast re-load later. WARNING: If using multiprocessing, memory
+    useage may be significantly larger than file size
 
     Args:
         nbins: Number of bins used during the GPUMD simulation
-        nsamples: Number of times thermal conductivity was sampled with HNEMA during GPUMD simulation
+        nsamples: Number of times thermal conductivity was sampled with
+         HNEMA during GPUMD simulation
         inputfile: Modal thermal conductivity file output by GPUMD
         directory: Name of directory storing the input file to read
-        directions: Directions to gather data from. Any order of 'xyz' is accepted. Excluding directions also allowed
-            (i.e. 'xz' is accepted)
-        ndiv: Integer used to shrink number of bins output. If originally have 10 bins, but want 5, ndiv=2. nbins/ndiv
-            need not be an integer
-        outputfile: File name to save read data to. Output file is a binary dictionary. Loading from a binary file is
-            much faster than re-reading data files and saving is recommended
-        save: Toggle saving data to binary dictionary. Loading from save file is much faster and recommended
-        multiprocessing: Toggle using multi-core processing for conversion of text file
-        ncore: Number of cores to use for multiprocessing. Ignored if multiprocessing is False
-        block_size: Size of block (in bytes) to be read per read operation. File reading performance depend on this
-            parameter and file size
-        return_data: Toggle returning the loaded modal thermal conductivity data. If this is False, the user should
-            ensure that save is True
+        directions: Directions to gather data from. Any order of 'xyz'
+         is accepted. Excluding directions also allowed (i.e. 'xz' is
+         accepted)
+        ndiv: Integer used to shrink number of bins output. If originally
+         have 10 bins, but want 5, ndiv=2. nbins/ndiv need not be an int
+        outputfile: File name to save read data to. Output file is a
+         binary dictionary. Loading from a binary file is much faster than
+         re-reading data files and saving is recommended
+        save: Toggle saving data to binary dictionary. Loading from save
+         file is much faster and recommended
+        multiprocessing: Toggle using multi-core processing for conversion
+         of text file
+        ncore: Number of cores to use for multiprocessing. Ignored if
+         multiprocessing is False
+        block_size: Size of block (in bytes) to be read per read operation.
+         File reading performance depend on this parameter and file size
+        return_data: Toggle returning the loaded modal thermal conductivity
+         data. If this is False, the user should ensure that save is True
 
         Returns:
-            Dictionary with all modal thermal conductivities requested
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,nbins,nsamples,kmxi,kmxo,kmyi,kmyo,kmz
-       **units**,N/A,N/A,|hn1|,|hn1|,|hn1|,|hn1|,|hn1|
-
-    .. |hn1| replace:: Wm\ :sup:`-1` K\ :sup:`-1` *x*\ :sup:`-1`
-
-    Here *x* is the size of the bins in THz. For example, if there are 4 bins per THz, *x* = 0.25 THz.
+            Dictionary with all modal thermal conductivities requested.
+             Units are [nbins, nsamples -> N/A], [kmxi, kmxo, kmyi,
+             kmyo, kmz -> W(m^-1)(K^-1)(*x*^-1)]. Here *x* is the size
+             of the bins in THz. For example, if there are 4 bins per THz,
+             *x* = 0.25 THz.
     """
     km_path = util.get_path(directory, inputfile)
     out_path = util.get_path(directory, outputfile)
@@ -580,14 +545,16 @@ def load_kappamode(nbins: int,
 
 def load_saved_kappamode(filename: str = "kappamode.npy", directory: str = None):
     """
-    Loads data saved by the 'load_kappamode' function and returns the original dictionary.
+    Loads data saved by the 'load_kappamode' function and returns the
+    original dictionary.
 
     Args:
         filename: Name of the file to load
         directory: Directory the data file is located in
 
     Returns:
-        Dictionary with all modal thermal conductivities previously requested
+        Dictionary with all modal thermal conductivities previously
+         requested
     """
     path = util.get_path(directory, filename)
     return np.load(path, allow_pickle=True).item()
@@ -595,7 +562,8 @@ def load_saved_kappamode(filename: str = "kappamode.npy", directory: str = None)
 
 def load_saved_heatmode(filename: str = "heatmode.npy", directory: str = None):
     """
-    Loads data saved by the 'load_heatmode' or 'get_gkma_kappa' function and returns the original dictionary.
+    Loads data saved by the 'load_heatmode' or 'get_gkma_kappa' function
+    and returns the original dictionary.
 
     Args:
         filename: Name of the file to load
@@ -617,16 +585,13 @@ def load_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", dir
     Args:
         bin_f_size: The frequency-based bin size (in THz)
         directory: Directory eigfile is stored
-        eigfile: The filename of the eigenvector output/input file created by GPUMD phonon package
+        eigfile: The filename of the eigenvector output/input file created
+         by GPUMD phonon package
 
     Returns:
-        Dictionary with the system eigen-freqeuency information along with binning information
-
-    .. csv-table:: Output dictionary
-       :stub-columns: 1
-
-       **key**,fq,fmax,fmin,shift,nbins,bin_count,bin_f_size
-       **units**,THz,THz,THz,N/A,N/A,N/A,THz
+        Dictionary with the system eigen-freqeuency information along with
+         binning information. Units are [fq, fmax, fmin, bin_f_size -> THz],
+         [shift, nbins, bin_count -> N/A].
     """
     eigpath = os.path.join(directory, eigfile) if directory else os.path.join(os.getcwd(), eigfile)
     with open(eigpath, 'r') as eig_filehandle:
