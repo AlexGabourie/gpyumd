@@ -17,18 +17,14 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None, gpumd_file: str = "xy
     Reads and returns the structure input file from GPUMD.
 
     Args:
-        atom_symbols: list of strings or ints
-            List of atom symbols/atomic number used in the xyz.in file. Ex: ['Mo', 'S', 'Si', 'O'].
-            Uses GPUMD type directly, if not provided.
-
-        gpumd_file: string
-            Name of structure file
-
-        directory: string
-            Directory of output
+        atom_symbols: List of atom symbols/atomic number used in the
+         xyz.in file. Ex: ['Mo', 'S', 'Si', 'O']. Uses GPUMD type
+         directly, if not provided.
+        gpumd_file: Name of structure file
+        directory: Directory of output
 
     Returns:
-        tuple: GpumdAtoms, max_neighbors, cutoff
+        tuple: GpumdAtoms
     """
     filepath = util.get_path(directory, gpumd_file)
     with open(filepath) as f:
