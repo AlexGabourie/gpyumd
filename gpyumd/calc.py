@@ -50,7 +50,11 @@ def calc_gkma_kappa(data: dict,
 
     Returns:
         Input data dict but with correlation, thermal conductivity, and
-         lag time data included
+         lag time data included. Units are [tau -> ns], [kmxi, kmxo, kmyi,
+         kmyo, kmz -> W(m^-1)(K^-1)(*x*^-1)], [jmxijx, jmxojx, jmyijy,
+         jmyojy, jmzjz -> (eV^3)(amu^(-1/2)(*x*^-1)]. Here *x* is the size
+         of the bins in THz. For example, if there are 4 bins per THz,
+         *x* = 0.25 THz.
     """
     def kappa_scaling() -> float:  # Keep to understand unit conversion
         # Units:     eV^3/amu -> Jm^2/s^2*eV         fs -> s       K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
@@ -144,6 +148,10 @@ def calc_spectral_kappa(shc: dict, driving_force: float, temperature: float, vol
         driving_force: HNEMD force in (1/A)
         temperature: HNEMD run temperature (K)
         volume: Volume (A^3) during HNEMD run
+
+    Returns:
+        New dict entries of spectral thermal conductivity. Units are [kwi,
+         kwo -> W(m^-1)(K^-1)(THz^-1)].
     """
     if 'jwi' not in shc.keys() or 'jwo' not in shc.keys():
         raise ValueError("shc argument must be from load_shc and contain in/out heat currents.")
