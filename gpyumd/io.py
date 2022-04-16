@@ -1,63 +1,18 @@
+from typing import List, Union
 from ase import Atom, Atoms
 import numpy as np
-from gpyumd.atoms import GpumdAtoms
-from gpyumd.util import get_path
+from gpyumd.atoms import GpumdAtoms, GroupGeneric
+from gpyumd import util
 
 __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
-
-
-#########################################
-# Helper Functions
-#########################################
-
-def __process_header(atoms, sim, box):
-    sim = sim.split()
-    box = box.split()
-
-    num_atoms = int(sim[0])
-    atoms.set_max_neighbors(int(sim[1]))
-    atoms.set_cutoff(float(sim[2]))
-    atoms.triclinic = bool(sim[3])
-    has_velocity = bool(sim[4])
-    num_group_methods = int(sim[5])
-    for group_num in range(num_group_methods):
-        atoms.add_group_method(GpumdAtoms.GroupGeneric(np.zeros(num_atoms, dtype=int)))
-
-    atoms.set_pbc([bool(pbc) for pbc in box[:3]])
-    if atoms.triclinic:
-        atoms.set_cell(np.array([float(component) for component in box[3:]]).reshape((3, 3)))
-    else:
-        lx, ly, lz = tuple(float(side_length) for side_length in box[3:])
-        atoms.set_cell([[lx, 0, 0], [0, ly, 0], [0, lz, 0]])
-
-    return has_velocity
-
-
-def __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_velocity):
-    atom_line = atom_line.split()
-    type_ = atom_symbols[int(atom_line[0])] if atom_symbols else int(atom_line[0])
-    position = [float(val) for val in atom_line[1:4]]
-    mass = float(atom_line[4])
-    momentum = None
-    atom_line = atom_line[5:]  # reduce list length for easier indexing
-    if has_velocity:
-        momentum = [float(val) * mass for val in atom_line[:3]]
-        atom_line = atom_line[3:]
-    atom = Atom(type_, position, mass=mass, momentum=momentum)
-    gpumd_atoms.append(atom)
-
-    if gpumd_atoms.num_group_methods:
-        groups = [int(group) for group in atom_line]
-        for group_method in range(len(groups)):
-            gpumd_atoms.group_methods[group_method].groups[atom_index] = groups[group_method]
 
 #########################################
 # Read Related
 #########################################
 
 
-def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory=None):
+def read_gpumd(atom_symbols: List[Union[str, int]] = None, gpumd_file: str = "xyz.in", directory: str = None):
     """
     Reads and returns the structure input file from GPUMD.
 
@@ -75,14 +30,49 @@ def read_gpumd(atom_symbols=None, gpumd_file='xyz.in', directory=None):
     Returns:
         tuple: GpumdAtoms, max_neighbors, cutoff
     """
-    filepath = get_path(directory, gpumd_file)
+    filepath = util.get_path(directory, gpumd_file)
     with open(filepath) as f:
         xyz_lines = f.readlines()
 
     gpumd_atoms = GpumdAtoms()
-    has_velocity = __process_header(gpumd_atoms, xyz_lines[0], xyz_lines[1])
+
+    # Process xyz.in header lines
+    sim = xyz_lines[0].split()
+    box = xyz_lines[1].split()
+    num_atoms = int(sim[0])
+    gpumd_atoms.set_max_neighbors(int(sim[1]))
+    gpumd_atoms.set_cutoff(float(sim[2]))
+    gpumd_atoms.triclinic = bool(sim[3])
+    has_velocity = bool(sim[4])
+    num_group_methods = int(sim[5])
+    for group_num in range(num_group_methods):
+        gpumd_atoms.add_group_method(GroupGeneric(np.zeros(num_atoms, dtype=int)))
+
+    gpumd_atoms.set_pbc([bool(pbc) for pbc in box[:3]])
+    if gpumd_atoms.triclinic:
+        gpumd_atoms.set_cell(np.array([float(component) for component in box[3:]]).reshape((3, 3)))
+    else:
+        lx, ly, lz = tuple(float(side_length) for side_length in box[3:])
+        gpumd_atoms.set_cell([[lx, 0, 0], [0, ly, 0], [0, lz, 0]])
+
+    # Get atoms from each line
     for atom_index, atom_line in enumerate(xyz_lines[2:]):
-        __get_atom_from_line(gpumd_atoms, atom_symbols, atom_line, atom_index, has_velocity)
+        atom_line = atom_line.split()
+        type_ = atom_symbols[int(atom_line[0])] if atom_symbols else int(atom_line[0])
+        position = [float(val) for val in atom_line[1:4]]
+        mass = float(atom_line[4])
+        momentum = None
+        atom_line = atom_line[5:]  # reduce list length for easier indexing
+        if has_velocity:
+            momentum = [float(val) * mass for val in atom_line[:3]]
+            atom_line = atom_line[3:]
+        atom = Atom(type_, position, mass=mass, momentum=momentum)
+        gpumd_atoms.append(atom)
+
+        if gpumd_atoms.num_group_methods:
+            groups = [int(group) for group in atom_line]
+            for group_method in range(len(groups)):
+                gpumd_atoms.group_methods[group_method].groups[atom_index] = groups[group_method]
 
     return gpumd_atoms
 
@@ -105,7 +95,7 @@ def read_movie(filename='movie.xyz', directory=None, atom_symbols=None):
     Returns:
         List of GpumdAtoms
     """
-    with open(get_path(directory, filename), 'r') as f:
+    with open(util.get_path(directory, filename), 'r') as f:
         lines = f.readlines()  # FIXME make memory efficient
 
     block_size = int(lines[0]) + 2
