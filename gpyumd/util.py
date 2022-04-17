@@ -41,7 +41,7 @@ def relate2str(relate) -> str:
         return "greater than"
 
 
-def cond_assign(val, threshold, relate, varname) -> numbers.Number:
+def cond_assign(val, threshold, relate, varname):
     val = assign_number(val, varname)
     if relate(val, threshold):
         return val
@@ -55,7 +55,7 @@ def cond_assign_int(val, threshold, relate, varname) -> int:
     raise ValueError(f"{varname} must be {relate2str(relate)} {threshold}")
 
 
-def assign_number(val, varname) -> numbers.Number:
+def assign_number(val, varname):
     try:
         if not isinstance(val, numbers.Number):
             val = float(val)
