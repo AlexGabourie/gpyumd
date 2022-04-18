@@ -18,10 +18,12 @@ class Simulation:
 
     def __init__(self, gpumd_atoms: GpumdAtoms, directory: str = None):
         """
-        Stores the relevant information for a full 'gpumd' executable simulation.
+        Stores the relevant information for a full 'gpumd' executable
+        simulation.
 
         Args:
-            gpumd_atoms: Final structure to be used with the GPUMD simulation.
+            gpumd_atoms: Final structure to be used with the GPUMD
+             simulation.
             directory: Directory of the simulation.
         """
         self.directory = util.create_directory(directory) if directory else os.getcwd()
@@ -172,8 +174,8 @@ class StaticCalc:
 
     def __init__(self):
         """
-        Stores the list of static calculation keywords used in the run.in file.
-         These keywords come after potential, but before the runs.
+        Stores the list of static calculation keywords used in the run.in
+        file. These keywords come after potential, but before the runs.
         """
         self.keywords = dict()
 

@@ -40,13 +40,13 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None,
     num_atoms = int(sim[0])
     gpumd_atoms.set_max_neighbors(int(sim[1]))
     gpumd_atoms.set_cutoff(float(sim[2]))
-    gpumd_atoms.triclinic = bool(sim[3])
-    has_velocity = bool(sim[4])
+    gpumd_atoms.triclinic = bool(int(sim[3]))
+    has_velocity = bool(int(sim[4]))
     num_group_methods = int(sim[5])
     for group_num in range(num_group_methods):
         gpumd_atoms.add_group_method(GroupGeneric(np.zeros(num_atoms, dtype=int)))
 
-    gpumd_atoms.set_pbc([bool(pbc) for pbc in box[:3]])
+    gpumd_atoms.set_pbc([bool(int(pbc)) for pbc in box[:3]])
     if gpumd_atoms.triclinic:
         gpumd_atoms.set_cell(np.array([float(component) for component in box[3:]]).reshape((3, 3)))
     else:

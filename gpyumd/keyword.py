@@ -13,12 +13,15 @@ class Keyword:
 
     def __init__(self, keyword: str, propagating: bool = False, take_immediate_action: bool = False):
         """
+        The base class for all GPUMD keywords
 
         Args:
             keyword: The keyword for the run.in file
-            propagating: Used to determine if a keyword propogates betwen runs.
-            take_immediate_action: Used to determine if a keword is evaluated immediately. If True, only one
-                keyword allowed for each run.
+            propagating: Used to determine if a keyword propogates between
+             runs.
+            take_immediate_action: Used to determine if a keword is
+             evaluated immediately. If True, only one keyword allowed for
+             each run.
         """
         self.propagating = propagating
         self.keyword = keyword
@@ -31,7 +34,8 @@ class Keyword:
 
     def get_entry(self) -> str:
         """
-        Gets the line for the run.in file based on the keyword and parameters.
+        Gets the line for the run.in file based on the keyword and
+        parameters.
 
         Returns:
             The entry to the run.in file for GPUMD
@@ -45,7 +49,8 @@ class Keyword:
     def _set_args(self, required_args: List[any], optional_args: List[any] = None) -> None:
         """
         Args:
-            required_args: A list of arguments required for the keyword. Must be in correct order.
+            required_args: A list of arguments required for the keyword.
+             Must be in correct order.
             optional_args: A list of optional arguments, added in order
         """
         # TODO have a reset or extension?
@@ -95,7 +100,8 @@ class TimeStep(Keyword):
 
         Args:
             dt_in_fs: The time step to use for integration [fs]
-            max_distance_per_step: The maximum distance an atom can travel within one step [Angstroms]
+            max_distance_per_step: The maximum distance an atom can travel
+             within one step [Angstroms]
         """
         super().__init__('time_step', propagating=True)
         self.dt_in_fs = util.cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
@@ -117,8 +123,9 @@ class Ensemble(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
-                                    'heat_nhc', 'heat_bdp', 'heat_lan'
+            ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc',
+             'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr', 'heat_nhc',
+             'heat_bdp', 'heat_lan'
         """
         super().__init__('ensemble')
         if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
@@ -159,7 +166,8 @@ class Ensemble(Keyword):
         <condition> --> <required keys> \n
         'isotropic' --> p_hydro C_hydro \n
         'orthogonal' --> p_xx p_yy p_zz C_xx C_yy C_zz \n
-        'triclinic' --> p_xx p_yy p_zz p_xy p_xz p_yz C_xx C_yy C_zz C_xy C_xz C_yz \n
+        'triclinic' --> p_xx p_yy p_zz p_xy p_xz p_yz C_xx C_yy C_zz
+                                                      C_xy C_xz C_yz \n
 
         Args:
             initial_temperature: Initial temperature of run. [K]
@@ -167,8 +175,8 @@ class Ensemble(Keyword):
             thermostat_coupling: Coupling strength to the thermostat.
             barostat_coupling: Coupling strength to the thermostat.
             condition: Either 'isotropic', 'orthogonal', or 'triclinic'.
-            pdict: Stores the elastic moduli [GPa] and barostat pressures [GPa] required for the condition. See
-                below for more details.
+            pdict: Stores the elastic moduli [GPa] and barostat pressures
+             [GPa] required for the condition. See below for more details.
         """
         if not isinstance(self.ensemble, self.NPT):
             raise Exception("Ensemble is not set for NPT.")
@@ -184,9 +192,12 @@ class Ensemble(Keyword):
         Args:
             temperature: Base temperature of the simulation. [K]
             thermostat_coupling: Coupling strength to the thermostat.
-            temperature_delta: Temperature change from base temperature. [K] (Note: total delta is twice this.)
-            source_group_id: The group ID (in grouping method 0) to source heat. (Note: +temperature_delta)
-            sink_group_id: The group ID (in grouping method 0) to sink heat. (Note: -temperature_delta)
+            temperature_delta: Temperature change from base temperature [K].
+             (Note: total delta is twice this.)
+            source_group_id: The group ID (in grouping method 0) to source
+             heat. (Note: +temperature_delta)
+            sink_group_id: The group ID (in grouping method 0) to sink
+             heat. (Note: -temperature_delta)
         """
         if not isinstance(self.ensemble, self.Heat):
             raise Exception("Ensemble is not set for Heat.")
@@ -872,6 +883,7 @@ class ComputePhonon(Keyword):
         self._set_args([self.cutoff, self.displacement])
 
 
+# TODO if NEP, need to check that the list of symbols matches that in the first line of the NEP potential file
 class Potential(Keyword):
 
     supported_potentials = ["tersoff_1989", "tersoff_1988", "tersoff_mini", "sw_1985", "rebo_mos2", "eam_zhou_2004",
