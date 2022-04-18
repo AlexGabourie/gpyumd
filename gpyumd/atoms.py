@@ -370,23 +370,27 @@ class GpumdAtoms(Atoms):
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
-    def set_type_dict(self, type_dict: Dict[str, int]) -> None:
+    def set_type_dict(self, type_dict: Dict[str, int], overwrite: bool = False) -> None:
         """
         Assigns atomic symbols to GPUMD types
 
         Args:
             type_dict: Atomic symbol keys and type values
+            overwrite: To completely change existing type_dict
         """
         if not (sorted(type_dict.values()) == list(range(len(set(type_dict.values()))))):
             raise ValueError("type_dict must have a set of contiguous positive integers (including zero).")
         util.check_symbols(list(type_dict.keys()))
         if len(type_dict.keys()) > len(set(type_dict.keys())):
             raise ValueError("type_dict cannot have duplicate symbol entries.")
-        for symbol in type_dict.keys():
-            if symbol not in self.type_dict:
-                raise ValueError(f"'{symbol}' symbol does not exist in the GpumdAtoms object.")
-        if not (set(self.get_chemical_symbols()) == set(type_dict.keys())):
-            raise ValueError("Set of symbols must match those of the GpumdAtoms object.")
+        if not len(set(self.get_chemical_symbols())) == len(type_dict.keys()):
+            raise ValueError("type_dict does not have enough atom types for this GpumdAtoms object.")
+        if not overwrite:
+            for symbol in type_dict.keys():
+                if symbol not in self.type_dict:
+                    raise ValueError(f"'{symbol}' symbol does not exist in the GpumdAtoms object.")
+            if not (set(self.get_chemical_symbols()) == set(type_dict.keys())):
+                raise ValueError("Set of symbols must match those of the GpumdAtoms object.")
         self.type_dict = type_dict
 
     def write_gpumd(self, use_velocity: bool = False, gpumd_file: str = "xyz.in", directory: str = None) -> None:
