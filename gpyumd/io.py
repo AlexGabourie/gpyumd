@@ -1,5 +1,5 @@
 from typing import List, Union, Optional, Mapping, Sequence, Tuple
-from ase import Atom
+from ase import Atom, Atoms
 import numpy as np
 from gpyumd.atoms import GpumdAtoms, GroupGeneric
 from gpyumd import util
@@ -12,16 +12,16 @@ __email__ = "agabourie47@gmail.com"
 #########################################
 
 
-def read_gpumd(atom_symbols: List[Union[str, int]] = None,
+def read_gpumd(atom_symbols: List[str] = None,
                gpumd_file: str = "xyz.in",
                directory: str = None) -> GpumdAtoms:
     """
     Reads and returns the structure input file from GPUMD.
 
     Args:
-        atom_symbols: List of atom symbols/atomic number used in the
-         xyz.in file. Ex: ['Mo', 'S', 'Si', 'O']. Uses GPUMD type
-         directly, if not provided.
+        atom_symbols: List of atom symbols used in the xyz.in file.
+         Ex: ['Mo', 'S', 'Si', 'O']. Uses GPUMD type directly, if not
+         provided.
         gpumd_file: Name of structure file
         directory: Directory of output
 
@@ -31,6 +31,9 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None,
     filepath = util.get_path(directory, gpumd_file)
     with open(filepath) as f:
         xyz_lines = f.readlines()
+
+    if atom_symbols:
+        util.check_symbols(atom_symbols)
 
     gpumd_atoms = GpumdAtoms()
 
@@ -50,13 +53,15 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None,
     if gpumd_atoms.triclinic:
         gpumd_atoms.set_cell(np.array([float(component) for component in box[3:]]).reshape((3, 3)))
     else:
-        lx, ly, lz = tuple(float(side_length) for side_length in box[3:])
-        gpumd_atoms.set_cell([[lx, 0, 0], [0, ly, 0], [0, lz, 0]])
+        gpumd_atoms.set_cell(tuple(float(side_length) for side_length in box[3:]))
 
     # Get atoms from each line
+    type_dict = dict()
+    atoms_list = list()
     for atom_index, atom_line in enumerate(xyz_lines[2:]):
         atom_line = atom_line.split()
-        type_ = atom_symbols[int(atom_line[0])] if atom_symbols else int(atom_line[0])
+        type_ = int(atom_line[0])
+        symbol = atom_symbols[type_] if atom_symbols else type_
         position = [float(val) for val in atom_line[1:4]]
         mass = float(atom_line[4])
         momentum = None
@@ -64,14 +69,19 @@ def read_gpumd(atom_symbols: List[Union[str, int]] = None,
         if has_velocity:
             momentum = [float(val) * mass for val in atom_line[:3]]
             atom_line = atom_line[3:]
-        atom = Atom(type_, position, mass=mass, momentum=momentum)
-        gpumd_atoms.append(atom)
-
+        atom = Atom(symbol, position, mass=mass, momentum=momentum)
+        if not atom_symbols:
+            symbol = atom.symbol
+        if symbol not in type_dict:
+            type_dict[symbol] = type_
+        atoms_list.append(atom)
         if gpumd_atoms.num_group_methods:
             groups = [int(group) for group in atom_line]
             for group_method in range(len(groups)):
                 gpumd_atoms.group_methods[group_method].groups[atom_index] = groups[group_method]
 
+    gpumd_atoms.extend(Atoms(atoms_list))
+    gpumd_atoms.set_type_dict(type_dict, overwrite=True)
     return gpumd_atoms
 
 

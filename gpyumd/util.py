@@ -77,13 +77,16 @@ def is_int(val, varname) -> int:
 
 def get_direction(directions: str) -> List[str]:
     """
-    Creates a sorted list showing which directions the user asked for. Ex: 'xyz' -> ['x', 'y', 'z']
+    Creates a sorted list showing which directions the user asked for.
+    Ex: 'xyz' -> ['x', 'y', 'z']
 
     Args:
-        directions: A string containing the directions the user wants to process (Ex: 'xyz', 'zy', 'x')
+        directions: A string containing the directions the user wants to
+         process (Ex: 'xyz', 'zy', 'x')
 
     Returns:
-        An ordered list that simplifies the user input for future processing
+        An ordered list that simplifies the user input for future
+         processing
     """
     if not (bool(re.match('^[xyz]+$', directions)) or len(directions) > 3 or len(directions) == 0):
         raise ValueError('Invalid directions used.')
