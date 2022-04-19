@@ -46,9 +46,7 @@ def read_gpumd(atom_symbols: List[str] = None,
     gpumd_atoms.triclinic = bool(int(sim[3]))
     has_velocity = bool(int(sim[4]))
     num_group_methods = int(sim[5])
-    for group_num in range(num_group_methods):
-        gpumd_atoms.add_group_method(GroupGeneric(np.zeros(num_atoms, dtype=int)))
-
+    group_methods = np.zeros((num_group_methods, num_atoms), dtype=int)
     gpumd_atoms.set_pbc([bool(int(pbc)) for pbc in box[:3]])
     if gpumd_atoms.triclinic:
         gpumd_atoms.set_cell(np.array([float(component) for component in box[3:]]).reshape((3, 3)))
@@ -75,10 +73,13 @@ def read_gpumd(atom_symbols: List[str] = None,
         if symbol not in type_dict:
             type_dict[symbol] = type_
         atoms_list.append(atom)
-        if gpumd_atoms.num_group_methods:
+        if num_group_methods:
             groups = [int(group) for group in atom_line]
             for group_method in range(len(groups)):
-                gpumd_atoms.group_methods[group_method].groups[atom_index] = groups[group_method]
+                group_methods[group_method, atom_index] = groups[group_method]
+
+    for group_method_idx in range(num_group_methods):
+        gpumd_atoms.add_group_method(GroupGeneric(group_methods[group_method_idx, :]))
 
     gpumd_atoms.extend(Atoms(atoms_list))
     gpumd_atoms.set_type_dict(type_dict, overwrite=True)
