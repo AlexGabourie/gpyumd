@@ -357,10 +357,12 @@ class GpumdAtoms(Atoms):
             self.__enforce_sort(sorted(index_range,
                                        key=lambda atom_idx: self.__atom_symbol_sortkey(self[atom_idx], order)))
         elif sort_key == 'group':
-            if not order or group_method:
+            if not (order and group_method):
                 raise ValueError("Sorting by group requires the 'order' and 'group_method' parameters.")
+            group_method = util.cond_assign_int(group_method, 0, op.ge, 'group_method')
             if group_method >= self.num_group_methods:
                 raise ValueError("The group_method parameter is greater than the number of grouping methods assigned.")
+            order = util.check_list(order, 'order', dtype=int)
             if not (sorted(order) == list(range(self.group_methods[group_method].num_groups))):
                 raise ValueError("Not all groups are accounted for.")
             self.__enforce_sort(
