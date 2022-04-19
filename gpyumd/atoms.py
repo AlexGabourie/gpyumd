@@ -116,6 +116,8 @@ class GroupByPosition(GroupMethod):
 
 class GpumdAtoms(Atoms):
 
+    group_methods: List[GroupMethod]
+
     def __init__(self, symbols=None,
                  positions=None, numbers=None,
                  tags=None, momenta=None, masses=None,
@@ -294,7 +296,7 @@ class GpumdAtoms(Atoms):
 
         # update groups
         for group in self.group_methods:
-            group.update(self)
+            group.update(self, order=atom_order if group.group_type == 'generic' else None)
 
     def __update_atoms(self, atoms_list: List[Atom]) -> None:
         """
@@ -338,11 +340,10 @@ class GpumdAtoms(Atoms):
 
         Args:
             sort_key: How to sort atoms ('group', 'type')
-            order:
-                For sort_key=='type', a list of atomic symbol strings in the
-                    desired order. Ex: ["Mo", "S", "Si", "O"].
-                For sort_key=='group', a list of ints in desired order for
-                    groups at group_index. Ex: [1,3,2,4]
+            order: For sort_key=='type', a list of atomic symbol strings
+             in the desired order. Ex: ["Mo", "S", "Si", "O"]. For
+             sort_key=='group', a list of ints in desired order for groups
+             at group_index. Ex: [1,3,2,4]
             group_method: Selects the group to sort in the output.
         """
         if not sort_key and not order and not group_method:
