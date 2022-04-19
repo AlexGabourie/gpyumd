@@ -354,6 +354,9 @@ class GpumdAtoms(Atoms):
         if sort_key == 'type':
             if not order:
                 raise ValueError("Sorting by type requires the 'order' parameter.")
+            for symbol in order:
+                if symbol not in self.type_dict.keys():
+                    raise ValueError(f"The {symbol} symbol is not found in this GpumdAtoms object.")
             self.__enforce_sort(sorted(index_range,
                                        key=lambda atom_idx: self.__atom_symbol_sortkey(self[atom_idx], order)))
         elif sort_key == 'group':
