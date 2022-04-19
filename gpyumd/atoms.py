@@ -409,15 +409,15 @@ class GpumdAtoms(Atoms):
         # Create first two lines
         pbc = self.get_pbc()
         lx, ly, lz, a1, a2, a3 = tuple(self.cell.cellpar())
-        summary = f"{len(self)} {self.max_neighbors} {self.cutoff} {int(self.triclinic)} " \
-                  f"{int(use_velocity)} {self.num_group_methods}\n" \
-                  f"{int(pbc[0])} {int(pbc[1])} {int(pbc[2])} "
+        summary = f"{len(self)} {self.max_neighbors} {self.cutoff} {int(self.triclinic)}" \
+                  f" {int(use_velocity)} {self.num_group_methods}\n" \
+                  f"{int(pbc[0])} {int(pbc[1])} {int(pbc[2])}"
 
         if self.triclinic:
             for component in self.get_cell().flatten():
-                summary += f"{component} "
+                summary += f" {component}"
         else:
-            summary += f"{lx} {ly} {lz}"
+            summary += f" {lx} {ly} {lz}"
 
         # write structure
         filename = util.get_path(directory, gpumd_file)
@@ -425,12 +425,12 @@ class GpumdAtoms(Atoms):
             f.writelines(summary)
             for atom in self:
                 pos = atom.position
-                line = f"\n{self.type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass} "
+                line = f"\n{self.type_dict[atom.symbol]} {pos[0]} {pos[1]} {pos[2]} {atom.mass}"
                 if use_velocity:
                     vel = [p / atom.mass for p in atom.momentum]
-                    line += f"{vel[0]} {vel[1]} {vel[2]} "
+                    line += f" {vel[0]} {vel[1]} {vel[2]}"
                 for group in self.group_methods:
-                    line += f"{group.groups[atom.index]} "
+                    line += f" {group.groups[atom.index]}"
                 f.writelines(line)
 
     def add_group_method(self, group: "GroupMethod") -> int:
