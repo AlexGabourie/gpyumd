@@ -61,6 +61,11 @@ class GroupBySymbol(GroupMethod):
 
     def __init__(self, symbols: Dict[str, int]):
         super().__init__(group_type='type')
+        util.check_symbols(list(symbols.keys()))
+        if not sorted(list(set(symbols.values()))) == list(range(0, max(symbols.values()) + 1)):
+            raise ValueError("Groups must start at 0 and all groups must be represented up to the largest group number "
+                             "provided.")
+
         self.symbols = symbols
         self.num_groups = len(set(symbols.values()))
         self.counts = np.zeros(self.num_groups, dtype=int)
@@ -78,6 +83,18 @@ class GroupByPosition(GroupMethod):
 
     def __init__(self, split: List[float], direction: str):
         super().__init__(group_type='position')
+
+        if not (direction in ['x', 'y', 'z']):
+            raise ValueError("The 'direction' parameter must be in 'x', 'y', 'or 'z'.")
+
+        splitlen = len(split)
+        if splitlen < 2:
+            raise ValueError("The 'split' parameter must be greater than length 1.")
+
+        # check for ascending or descending
+        if not all([split[i + 1] > split[i] for i in range(splitlen - 1)]):
+            raise ValueError("The 'split' parameter must be ascending.")
+
         self.split = split
         self.direction = direction
         self.num_groups = len(split) - 1
@@ -527,17 +544,6 @@ class GpumdAtoms(Atoms):
         Returns:
             (index of the grouping method, number of atoms in each group)
         """
-        if not (direction in ['x', 'y', 'z']):
-            raise ValueError("The 'direction' parameter must be in 'x', 'y', 'or 'z'.")
-
-        splitlen = len(split)
-        if splitlen < 2:
-            raise ValueError("The 'split' parameter must be greater than length 1.")
-
-        # check for ascending or descending
-        if not all([split[i + 1] > split[i] for i in range(splitlen - 1)]):
-            raise ValueError("The 'split' parameter must be ascending.")
-
         group = GroupByPosition(split, direction)
         group.update(self)
         group_idx = self.add_group_method(group)
@@ -557,13 +563,12 @@ class GpumdAtoms(Atoms):
             (index of the grouping method, number of atoms in each group)
         """
         # atom symbol checking
-        all_symbols = list(symbols)
         # check that symbol set matches symbol set of atoms
-        if set(self.get_chemical_symbols()) - set(all_symbols):
-            raise ValueError('Group symbols do not match atoms symbols.')
-        if not len(set(all_symbols)) == len(all_symbols):
-            raise ValueError('Group not assigned to all atom symbols.')
-
+        symbol_set = set(self.get_chemical_symbols())
+        if symbol_set - set(list(symbols)):
+            raise ValueError("Group symbols do not match atoms symbols. Atom symbols may not be represented.")
+        if not len(symbol_set) == len(symbols):
+            raise ValueError("Too many symbols provided.")
         group = GroupBySymbol(symbols)
         group.update(self)
         group_idx = self.add_group_method(group)
