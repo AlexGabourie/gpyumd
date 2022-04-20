@@ -11,9 +11,10 @@ __email__ = "agabourie47@gmail.com"
 
 
 # TODO move to new module?
+# TODO maybe move back into the GpumdAtoms class. Would allow for all appropriate param validation inside Group classes
 class GroupMethod(ABC):
 
-    def __init__(self, group_type=None):
+    def __init__(self, group_type: str = None):
         """
         Stores grouping information for a GpumdAtoms object
         """
@@ -23,15 +24,19 @@ class GroupMethod(ABC):
         self.counts = None
 
     @abstractmethod
-    def update(self, atoms, order=None):
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
         pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(num_groups={self.num_groups}, counts={self.counts})"
 
 
 class GroupGeneric(GroupMethod):
 
-    def __init__(self, groups):
+    def __init__(self, groups: List[int]):
         """
-        Grouping with no specific guidelines. Mostly used for loaded xyz.in files.
+        Grouping with no specific guidelines. Mostly used for loaded
+        xyz.in files.
         """
         super().__init__(group_type='generic')
         self.num_groups = len(set(groups))
@@ -42,7 +47,7 @@ class GroupGeneric(GroupMethod):
             self.counts[group] += 1
         self.groups = groups
 
-    def update(self, atoms, order=None):
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
         if not order:
             raise ValueError("Generic groups are only updated with new atom ordering. "
                              "The 'order' parameter is required.")
@@ -54,13 +59,13 @@ class GroupGeneric(GroupMethod):
 
 class GroupBySymbol(GroupMethod):
 
-    def __init__(self, symbols):
+    def __init__(self, symbols: Dict[str, int]):
         super().__init__(group_type='type')
         self.symbols = symbols
         self.num_groups = len(set(symbols.values()))
         self.counts = np.zeros(self.num_groups, dtype=int)
 
-    def update(self, atoms, order=None):
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
         num_atoms = len(atoms)
         self.groups = np.full(num_atoms, -1, dtype=int)
         for index, atom in enumerate(atoms):
@@ -71,14 +76,14 @@ class GroupBySymbol(GroupMethod):
 
 class GroupByPosition(GroupMethod):
 
-    def __init__(self, split, direction):
+    def __init__(self, split: List[float], direction: str):
         super().__init__(group_type='position')
         self.split = split
         self.direction = direction
         self.num_groups = len(split) - 1
         self.counts = np.zeros(self.num_groups, dtype=int)
 
-    def update(self, atoms, order=None):
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
         num_atoms = len(atoms)
         self.groups = np.full(num_atoms, -1, dtype=int)
         for index, atom in enumerate(atoms):
@@ -86,7 +91,7 @@ class GroupByPosition(GroupMethod):
             self.groups[index] = atom_group
             self.counts[atom_group] += 1
 
-    def get_group(self, position):
+    def get_group(self, position: List[float]) -> int:
         """
         Gets the group that an atom belongs to based on its position. Only
         works in one direction as it is used for NEMD.
@@ -515,8 +520,8 @@ class GpumdAtoms(Atoms):
 
         Args:
             split: List of boundaries in ascending order. First element should
-                be lower boundary of simulation box in specified direction and
-                the last the upper.
+             be lower boundary of simulation box in specified direction and
+             the last the upper.
             direction: Which direction the split will work
 
         Returns:
@@ -545,8 +550,8 @@ class GpumdAtoms(Atoms):
 
         Args:
             symbols: Dictionary with symbols for keys and group as a value.
-                Only one group allowed per atom. Assumed groups are integers
-                starting at 0 and increasing in steps of 1.
+             Only one group allowed per atom. Assumed groups are integers
+             starting at 0 and increasing in steps of 1.
 
         Returns:
             (index of the grouping method, number of atoms in each group)
@@ -574,9 +579,9 @@ class GpumdAtoms(Atoms):
         Args:
             path: String of special point names defining the path, e.g. 'GXL'
             npoints: Number of points in total.  Note that at least one point
-                is added for each special point in the path
+             is added for each special point in the path
             special_points: Map of special points to scaled kpoint
-                coordinates. For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
+             coordinates. For example ``{'G': [0, 0, 0], 'X': [1, 0, 0]}``
             filename: File to save the structure data to
             directory: Directory to store output
 
