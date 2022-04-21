@@ -3,7 +3,6 @@ import numpy as np
 from ase import Atoms, Atom
 from abc import ABC, abstractmethod
 from gpyumd import util
-from numpy import prod
 from typing import List, Union, Tuple, Dict, Optional, Mapping, Sequence
 
 __author__ = "Alexander Gabourie"
@@ -381,7 +380,7 @@ class GpumdAtoms(Atoms):
         util.check_range(rep, 2 ** 64)
         supercell = GpumdAtoms(self.repeat(rep))
         supercell.unitcell = self.unitcell
-        for i in range(1, prod(rep, dtype=int)):
+        for i in range(1, np.prod(rep, dtype=int)):
             supercell.basis.append(self.basis)
 
         return supercell
