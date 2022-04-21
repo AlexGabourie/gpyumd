@@ -10,135 +10,9 @@ __author__ = "Alexander Gabourie"
 __email__ = "agabourie47@gmail.com"
 
 
-# TODO move to new module?
-# TODO maybe move back into the GpumdAtoms class. Would allow for all appropriate param validation inside Group classes
-class GroupMethod(ABC):
-
-    def __init__(self, group_type: str = None):
-        """
-        Stores grouping information for a GpumdAtoms object
-        """
-        self.groups = None
-        self.num_groups = None
-        self.group_type = group_type
-        self.counts = None
-
-    @abstractmethod
-    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
-        pass
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(num_groups={self.num_groups}, counts={self.counts})"
-
-
-class GroupGeneric(GroupMethod):
-
-    def __init__(self, groups: List[int]):
-        """
-        Grouping with no specific guidelines. Mostly used for loaded
-        xyz.in files.
-        """
-        super().__init__(group_type='generic')
-        self.num_groups = len(set(groups))
-        if not (sorted(set(groups)) == list(range(self.num_groups))):
-            raise ValueError("Groups are not contiguous.")
-        self.counts = np.zeros(self.num_groups, dtype=int)
-        for group in groups:
-            self.counts[group] += 1
-        self.groups = groups
-
-    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
-        if not order:
-            raise ValueError("Generic groups are only updated with new atom ordering. "
-                             "The 'order' parameter is required.")
-        new_groups = list()
-        for index in order:
-            new_groups.append(self.groups[index])
-        self.groups = new_groups
-
-
-class GroupBySymbol(GroupMethod):
-
-    def __init__(self, symbols: Dict[str, int]):
-        super().__init__(group_type='type')
-        util.check_symbols(list(symbols.keys()))
-        if not sorted(list(set(symbols.values()))) == list(range(0, max(symbols.values()) + 1)):
-            raise ValueError("Groups must start at 0 and all groups must be represented up to the largest group number "
-                             "provided.")
-
-        self.symbols = symbols
-        self.num_groups = len(set(symbols.values()))
-        self.counts = np.zeros(self.num_groups, dtype=int)
-
-    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
-        num_atoms = len(atoms)
-        self.groups = np.full(num_atoms, -1, dtype=int)
-        for index, atom in enumerate(atoms):
-            atom_group = self.symbols[atom.symbol]
-            self.counts[atom_group] += 1
-            self.groups[index] = atom_group
-
-
-class GroupByPosition(GroupMethod):
-
-    def __init__(self, split: List[float], direction: str):
-        super().__init__(group_type='position')
-
-        if not (direction in ['x', 'y', 'z']):
-            raise ValueError("The 'direction' parameter must be in 'x', 'y', 'or 'z'.")
-
-        splitlen = len(split)
-        if splitlen < 2:
-            raise ValueError("The 'split' parameter must be greater than length 1.")
-
-        # check for ascending or descending
-        if not all([split[i + 1] > split[i] for i in range(splitlen - 1)]):
-            raise ValueError("The 'split' parameter must be ascending.")
-
-        self.split = split
-        self.direction = direction
-        self.num_groups = len(split) - 1
-        self.counts = np.zeros(self.num_groups, dtype=int)
-
-    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
-        num_atoms = len(atoms)
-        self.groups = np.full(num_atoms, -1, dtype=int)
-        for index, atom in enumerate(atoms):
-            atom_group = self.get_group(atom.position)
-            self.groups[index] = atom_group
-            self.counts[atom_group] += 1
-
-    def get_group(self, position: List[float]) -> int:
-        """
-        Gets the group that an atom belongs to based on its position. Only
-        works in one direction as it is used for NEMD.
-
-        Args:
-            position: list of floats of length 3
-                Position of the atom
-
-        Returns:
-            int: Group of atom
-        """
-        if self.direction == 'x':
-            dim_pos = position[0]
-        elif self.direction == 'y':
-            dim_pos = position[1]
-        else:
-            dim_pos = position[2]
-        errmsg = f"The position {dim_pos} in the {self.direction} direction is out of bounds based" \
-                 f" on the split provided."
-        for split_idx, boundary in enumerate(self.split[:-1]):
-            if split_idx == 0 and dim_pos < boundary:
-                raise ValueError(errmsg)
-            if boundary <= dim_pos < self.split[split_idx + 1]:
-                return split_idx
-        raise ValueError(errmsg)
-
-
 class GpumdAtoms(Atoms):
 
-    group_methods: List[GroupMethod]
+    group_methods: List["GroupMethod"]
 
     def __init__(self, symbols=None,
                  positions=None, numbers=None,
@@ -461,23 +335,6 @@ class GpumdAtoms(Atoms):
                     line += f" {group.groups[atom.index]}"
                 f.writelines(line)
 
-    def add_group_method(self, group: "GroupMethod") -> int:
-        """
-        Add a grouping method to the GpumdAtoms object.
-
-        Args:
-            group: The group method to add
-
-        Returns:
-            Index of grouping method
-        """
-        if self.num_group_methods == 10:
-            print(f"A maximum of 10 grouping methods can be used. Current group will not be added.")
-            return self.num_group_methods - 1
-        self.group_methods.append(group)
-        self.num_group_methods = len(self.group_methods)
-        return self.num_group_methods - 1
-
     def add_basis(self, index: List[int] = None, mapping: List[int] = None) -> None:
         """
         Assigns a basis index for each atom in atoms. Updates atoms.
@@ -529,51 +386,6 @@ class GpumdAtoms(Atoms):
 
         return supercell
 
-    def group_by_position(self, split: List[float], direction: str) -> Tuple[int, np.ndarray]:
-        """
-        Assigns groups to all atoms based on its position. Only works in
-        one direction as it is used for NEMD.
-        Returns a bookkeeping parameter, but atoms will be udated in-place.
-
-        Args:
-            split: List of boundaries in ascending order. First element should
-             be lower boundary of simulation box in specified direction and
-             the last the upper.
-            direction: Which direction the split will work
-
-        Returns:
-            (index of the grouping method, number of atoms in each group)
-        """
-        group = GroupByPosition(split, direction)
-        group.update(self)
-        group_idx = self.add_group_method(group)
-        return group_idx, group.counts
-
-    def group_by_symbol(self, symbols: dict) -> Tuple[int, np.ndarray]:
-        """
-        Assigns groups to all atoms based on atom symbols. Returns a
-        bookkeeping parameter, but atoms will be udated in-place.
-
-        Args:
-            symbols: Dictionary with symbols for keys and group as a value.
-             Only one group allowed per atom. Assumed groups are integers
-             starting at 0 and increasing in steps of 1.
-
-        Returns:
-            (index of the grouping method, number of atoms in each group)
-        """
-        # atom symbol checking
-        # check that symbol set matches symbol set of atoms
-        symbol_set = set(self.get_chemical_symbols())
-        if symbol_set - set(list(symbols)):
-            raise ValueError("Group symbols do not match atoms symbols. Atom symbols may not be represented.")
-        if not len(symbol_set) == len(symbols):
-            raise ValueError("Too many symbols provided.")
-        group = GroupBySymbol(symbols)
-        group.update(self)
-        group_idx = self.add_group_method(group)
-        return group_idx, group.counts
-
     def write_kpoints(self, path: str = "G", npoints: int = 1,
                       special_points: Optional[Mapping[str, Sequence[float]]] = None,
                       filename: str = "kpoints.in", directory: str = None) -> Tuple[np.ndarray, None, List[str]]:
@@ -623,3 +435,189 @@ class GpumdAtoms(Atoms):
                 f.writelines(f"{basis_id} {masses[basis_id]}\n")
             for atom_basis in self.basis:
                 f.writelines(f"{atom_basis}\n")
+
+    def add_group_method(self, group: "GroupMethod") -> int:
+        """
+        Add a grouping method to the GpumdAtoms object.
+
+        Args:
+            group: The group method to add
+
+        Returns:
+            Index of grouping method
+        """
+        if self.num_group_methods == 10:
+            print(f"A maximum of 10 grouping methods can be used. Current group will not be added.")
+            return self.num_group_methods - 1
+        self.group_methods.append(group)
+        self.num_group_methods = len(self.group_methods)
+        return self.num_group_methods - 1
+
+    def group_by_position(self, split: List[float], direction: str) -> Tuple[int, np.ndarray]:
+        """
+        Assigns groups to all atoms based on its position. Only works in
+        one direction as it is used for NEMD.
+        Returns a bookkeeping parameter, but atoms will be udated in-place.
+
+        Args:
+            split: List of boundaries in ascending order. First element should
+             be lower boundary of simulation box in specified direction and
+             the last the upper.
+            direction: Which direction the split will work
+
+        Returns:
+            (index of the grouping method, number of atoms in each group)
+        """
+        group = GroupByPosition(split, direction)
+        group.update(self)
+        group_idx = self.add_group_method(group)
+        return group_idx, group.counts
+
+    def group_by_symbol(self, symbols: dict) -> Tuple[int, np.ndarray]:
+        """
+        Assigns groups to all atoms based on atom symbols. Returns a
+        bookkeeping parameter, but atoms will be udated in-place.
+
+        Args:
+            symbols: Dictionary with symbols for keys and group as a value.
+             Only one group allowed per atom. Assumed groups are integers
+             starting at 0 and increasing in steps of 1.
+
+        Returns:
+            (index of the grouping method, number of atoms in each group)
+        """
+        # atom symbol checking
+        # check that symbol set matches symbol set of atoms
+        symbol_set = set(self.get_chemical_symbols())
+        if symbol_set - set(list(symbols)):
+            raise ValueError("Group symbols do not match atoms symbols. Atom symbols may not be represented.")
+        if not len(symbol_set) == len(symbols):
+            raise ValueError("Too many symbols provided.")
+        group = GroupBySymbol(symbols)
+        group.update(self)
+        group_idx = self.add_group_method(group)
+        return group_idx, group.counts
+
+
+class GroupMethod(ABC):
+
+    def __init__(self, group_type: str = None):
+        """
+        Stores grouping information for a GpumdAtoms object
+        """
+        self.groups = None
+        self.num_groups = None
+        self.group_type = group_type
+        self.counts = None
+
+    @abstractmethod
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
+        pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(num_groups={self.num_groups}, counts={self.counts})"
+
+
+class GroupGeneric(GroupMethod):
+
+    def __init__(self, groups: List[int]):
+        """
+        Grouping with no specific guidelines. Mostly used for loaded
+        xyz.in files.
+        """
+        super().__init__(group_type='generic')
+        self.num_groups = len(set(groups))
+        if not (sorted(set(groups)) == list(range(self.num_groups))):
+            raise ValueError("Groups are not contiguous.")
+        self.counts = np.zeros(self.num_groups, dtype=int)
+        for group in groups:
+            self.counts[group] += 1
+        self.groups = groups
+
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
+        if not order:
+            raise ValueError("Generic groups are only updated with new atom ordering. "
+                             "The 'order' parameter is required.")
+        new_groups = list()
+        for index in order:
+            new_groups.append(self.groups[index])
+        self.groups = new_groups
+
+
+class GroupBySymbol(GroupMethod):
+
+    def __init__(self, symbols: Dict[str, int]):
+        super().__init__(group_type='type')
+        util.check_symbols(list(symbols.keys()))
+        if not sorted(list(set(symbols.values()))) == list(range(0, max(symbols.values()) + 1)):
+            raise ValueError("Groups must start at 0 and all groups must be represented up to the largest group number "
+                             "provided.")
+
+        self.symbols = symbols
+        self.num_groups = len(set(symbols.values()))
+        self.counts = np.zeros(self.num_groups, dtype=int)
+
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
+        num_atoms = len(atoms)
+        self.groups = np.full(num_atoms, -1, dtype=int)
+        for index, atom in enumerate(atoms):
+            atom_group = self.symbols[atom.symbol]
+            self.counts[atom_group] += 1
+            self.groups[index] = atom_group
+
+
+class GroupByPosition(GroupMethod):
+
+    def __init__(self, split: List[float], direction: str):
+        super().__init__(group_type='position')
+
+        if not (direction in ['x', 'y', 'z']):
+            raise ValueError("The 'direction' parameter must be in 'x', 'y', 'or 'z'.")
+
+        splitlen = len(split)
+        if splitlen < 2:
+            raise ValueError("The 'split' parameter must be greater than length 1.")
+
+        # check for ascending or descending
+        if not all([split[i + 1] > split[i] for i in range(splitlen - 1)]):
+            raise ValueError("The 'split' parameter must be ascending.")
+
+        self.split = split
+        self.direction = direction
+        self.num_groups = len(split) - 1
+        self.counts = np.zeros(self.num_groups, dtype=int)
+
+    def update(self, atoms: "GpumdAtoms", order: List[int] = None):
+        num_atoms = len(atoms)
+        self.groups = np.full(num_atoms, -1, dtype=int)
+        for index, atom in enumerate(atoms):
+            atom_group = self.get_group(atom.position)
+            self.groups[index] = atom_group
+            self.counts[atom_group] += 1
+
+    def get_group(self, position: List[float]) -> int:
+        """
+        Gets the group that an atom belongs to based on its position. Only
+        works in one direction as it is used for NEMD.
+
+        Args:
+            position: list of floats of length 3
+                Position of the atom
+
+        Returns:
+            int: Group of atom
+        """
+        if self.direction == 'x':
+            dim_pos = position[0]
+        elif self.direction == 'y':
+            dim_pos = position[1]
+        else:
+            dim_pos = position[2]
+        errmsg = f"The position {dim_pos} in the {self.direction} direction is out of bounds based" \
+                 f" on the split provided."
+        for split_idx, boundary in enumerate(self.split[:-1]):
+            if split_idx == 0 and dim_pos < boundary:
+                raise ValueError(errmsg)
+            if boundary <= dim_pos < self.split[split_idx + 1]:
+                return split_idx
+        raise ValueError(errmsg)
