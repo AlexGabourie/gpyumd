@@ -378,7 +378,7 @@ class GpumdAtoms(Atoms):
         elif not replen == 3:
             raise ValueError("The rep parameter must be a sequence of 1 or 3 integers.")
         util.check_range(rep, 2 ** 64)
-        supercell = GpumdAtoms(self.repeat(rep))
+        supercell = GpumdAtoms(Atoms.repeat(self, rep))
         supercell.unitcell = self.unitcell
         for i in range(1, np.prod(rep, dtype=int)):
             supercell.basis.append(self.basis)
@@ -407,7 +407,7 @@ class GpumdAtoms(Atoms):
         """
         tol = 1e-15
         path = self.cell.bandpath(path, npoints, special_points=special_points)
-        b = self.get_reciprocal_cell() * 2 * np.pi  # Reciprocal lattice vectors
+        b = self.cell.reciprocal() * 2 * np.pi  # Reciprocal lattice vectors
         gpumd_kpts = np.matmul(path.kpts, b)
         gpumd_kpts[np.abs(gpumd_kpts) < tol] = 0.0
         # noinspection PyTypeChecker
