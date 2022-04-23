@@ -360,7 +360,6 @@ class GpumdAtoms(Atoms):
             self.unitcell = list(range(num_atoms))
             self.basis = list(range(num_atoms))
 
-    # TODO update structure in-place
     def repeat(self, rep: Union[int, List[int]]) -> "GpumdAtoms":
         """
         A wrapper of ase.Atoms.repeat that is aware of GPUMD's basis information.
@@ -380,9 +379,7 @@ class GpumdAtoms(Atoms):
         util.check_range(rep, 2 ** 64)
         supercell = GpumdAtoms(Atoms.repeat(self, rep))
         supercell.unitcell = self.unitcell
-        for i in range(1, np.prod(rep, dtype=int)):
-            supercell.basis.append(self.basis)
-
+        supercell.basis = self.basis * np.prod(rep, dtype=int)
         return supercell
 
     def write_kpoints(self, path: str = "G", npoints: int = 1,
