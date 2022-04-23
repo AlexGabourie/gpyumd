@@ -46,6 +46,9 @@ class Keyword:
             entry += " ".join([f"{arg}" for arg in self.optional_args])
         return entry
 
+    def __str__(self):
+        return self.get_entry()
+
     def _set_args(self, required_args: List[any], optional_args: List[any] = None) -> None:
         """
         Args:
