@@ -68,7 +68,10 @@ def assign_number(val, varname):
 def is_int(val, varname) -> int:
     try:
         if not isinstance(val, int):
+            orig_val = val
             val = int(val)
+            if not val == orig_val:
+                print(f"Warning: '{varname}' must be an int. Converted from {orig_val} to {val}")
     except ValueError:
         print(f"{varname} must be an int.")
         raise
