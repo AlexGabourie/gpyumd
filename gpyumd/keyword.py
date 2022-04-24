@@ -143,7 +143,7 @@ class Ensemble(Keyword):
             self.ensemble = Ensemble.NVT()
         elif ensemble_type == 'npt':
             self.ensemble = Ensemble.NPT()
-        else:
+        elif ensemble_type == 'heat':
             self.ensemble = Ensemble.Heat()
 
     def set_nvt_parameters(self, initial_temperature: float, final_temperature: float,
@@ -288,6 +288,7 @@ class Ensemble(Keyword):
             self.therostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
             if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
                 raise ValueError(f"The magnitude of temperature_delta is too large.")
+            self.temperature_delta = util.assign_number(temperature_delta, 'temperature_delta')
             self.source_group_id = util.cond_assign_int(source_group_id, 0, op.ge, 'source_group_id')
             self.sink_group_id = util.cond_assign_int(sink_group_id, 0, op.ge, 'sink_group_id')
             if self.source_group_id == self.sink_group_id:
