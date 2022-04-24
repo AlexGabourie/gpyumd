@@ -66,7 +66,8 @@ class Keyword:
         if not (bool(grouping_method) == bool(group_id)):
             raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
         elif grouping_method and group_id:
-            self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+            grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
+            self.grouping_method = util.cond_assign_int(grouping_method, 10, op.lt, 'grouping_method')
             self.group_id = util.cond_assign_int(group_id, 0, op.ge, 'group_id')
             return True
         return False
@@ -92,6 +93,9 @@ class Velocity(Keyword):
         self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
         self._set_args([self.initial_temperature])
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(initial_temperature={self.initial_temperature})"
+
 
 class TimeStep(Keyword):
 
@@ -110,11 +114,16 @@ class TimeStep(Keyword):
         self.dt_in_fs = util.cond_assign(dt_in_fs, 0, op.gt, 'dt_in_fs')
 
         optional = None
+        self.max_distance_per_step = None
         if max_distance_per_step:
             self.max_distance_per_step = util.cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
         self._set_args([self.dt_in_fs], optional_args=optional)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(dt_in_fs={self.dt_in_fs}, " \
+               f"max_distance_per_step={self.max_distance_per_step})"
 
 
 class Ensemble(Keyword):
@@ -358,12 +367,15 @@ class NeighborOff(Keyword):
         super().__init__('neighbor')
         self._set_args(['off'])
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
+
 
 class Fix(Keyword):
 
     def __init__(self, group_id: int):
         """
-        Fixes (freezes) a group of atoms
+        Fixes (freezes) a group of atoms in group method 0.
 
         https://gpumd.zheyongfan.org/index.php/The_fix_keyword
 
@@ -373,6 +385,9 @@ class Fix(Keyword):
         super().__init__('fix', False)
         self.group_id = util.cond_assign_int(group_id, 0, op.ge, 'group_id')
         self._set_args([self.group_id])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(group_id={self.group_id})"
 
 
 class Deform(Keyword):
@@ -400,6 +415,10 @@ class Deform(Keyword):
         self.strain_rate = util.cond_assign(strain_rate, 0, op.gt, 'strain_rate')
         self._set_args([self.strain_rate, int(self.deform_x), int(self.deform_y), int(self.deform_z)])
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(strain_rate={self.strain_rate}, deform_x={self.deform_x}, " \
+               f"deform_y={self.deform_y}, deform_z={self.deform_z})"
+
 
 class DumpThermo(Keyword):
 
@@ -415,6 +434,9 @@ class DumpThermo(Keyword):
         super().__init__('dump_thermo')
         self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval})"
 
 
 class DumpPosition(Keyword):
@@ -447,6 +469,10 @@ class DumpPosition(Keyword):
 
         self._set_args([self.interval], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, grouping_method={self.grouping_method}, " \
+               f"group_id={self.group_id}, precision={self.precision})"
+
 
 class DumpNetCDF(Keyword):
 
@@ -472,6 +498,9 @@ class DumpNetCDF(Keyword):
 
         self._set_args([self.interval], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, precision={self.precision})"
+
 
 class DumpRestart(Keyword):
 
@@ -487,6 +516,9 @@ class DumpRestart(Keyword):
         super().__init__('dump_restart')
         self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')
         self._set_args([self.interval])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval})"
 
 
 class DumpVelocity(Keyword):
@@ -510,6 +542,10 @@ class DumpVelocity(Keyword):
             options.extend(['group', self.grouping_method, self.group_id])
         self._set_args([self.interval], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, grouping_method={self.grouping_method}, " \
+               f"group_id={self.group_id})"
+
 
 class DumpForce(Keyword):
 
@@ -532,6 +568,10 @@ class DumpForce(Keyword):
             options.extend(['group', self.grouping_method, self.group_id])
         self._set_args([self.interval], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, grouping_method={self.grouping_method}, " \
+               f"group_id={self.group_id})"
+
 
 class DumpEXYZ(Keyword):
 
@@ -549,6 +589,10 @@ class DumpEXYZ(Keyword):
         self.has_velocity = util.assign_bool(has_velocity, 'has_velocity')
         self.has_force = util.assign_bool(has_force, 'has_force')
         self._set_args([self.interval, int(self.has_velocity), int(self.has_force)])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, has_velocity={self.has_velocity}, " \
+               f"has_force={self.has_force})"
 
 
 class Compute(Keyword):
@@ -585,6 +629,9 @@ class Compute(Keyword):
         self.jp = util.assign_bool(jp, 'jp')
         self.jk = util.assign_bool(jk, 'jk')
 
+        if not (self.temperature or self.potential or self.force or self.virial or self.jp or self.jk):
+            raise ValueError("One compute parameter must be True.")
+
         args.append('temperature') if self.temperature else None
         args.append('potential') if self.potential else None
         args.append('force') if self.force else None
@@ -593,6 +640,12 @@ class Compute(Keyword):
         args.append('jk') if self.jk else None
 
         self._set_args(args)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, " \
+               f"output_interval={self.output_interval}, grouping_method={self.grouping_method}, " \
+               f"temperature={self.temperature}, potential={self.potential}, force={self.force}, " \
+               f"virial={self.virial}, jp={self.jp}, jk={self.jk})"
 
 
 class ComputeSHC(Keyword):
@@ -634,6 +687,12 @@ class ComputeSHC(Keyword):
         self._set_args([self.sample_interval, self.num_corr_steps, transport_dict[self.transport_direction],
                         self.num_omega, self.max_omega], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, " \
+               f"num_corr_steps={self.num_corr_steps}, transport_direction={self.transport_direction}, " \
+               f"num_omega={self.num_omega}, max_omega={self.max_omega}, grouping_method={self.grouping_method}, " \
+               f"group_id={self.group_id})"
+
 
 class ComputeDOS(Keyword):
 
@@ -670,6 +729,12 @@ class ComputeDOS(Keyword):
 
         self._set_args([self.sample_interval, self.num_corr_steps, self.max_omega], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, " \
+               f"num_corr_steps={self.num_corr_steps}, max_omega={self.max_omega}, " \
+               f"num_dos_points={self.num_dos_points}, grouping_method={self.grouping_method}, " \
+               f"group_id={self.group_id})"
+
 
 class ComputeSDC(Keyword):
 
@@ -696,6 +761,11 @@ class ComputeSDC(Keyword):
 
         self._set_args([self.sample_interval, self.num_corr_steps], optional_args=options)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, " \
+               f"num_corr_steps={self.num_corr_steps}, grouping_method={self.grouping_method}, " \
+               f"group_id={self.group_id})"
+
 
 class ComputeHAC(Keyword):
 
@@ -717,6 +787,10 @@ class ComputeHAC(Keyword):
         self.output_interval = util.cond_assign_int(output_interval, 0, op.gt, 'output_interval')
 
         self._set_args([self.sample_interval, self.num_corr_steps, self.output_interval])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, " \
+               f"num_corr_steps={self.num_corr_steps}, output_interval={self.output_interval})"
 
 
 class ComputeHNEMD(Keyword):
@@ -740,6 +814,11 @@ class ComputeHNEMD(Keyword):
         self.driving_force_z = util.assign_number(driving_force_z, 'driving_force_z')
 
         self._set_args([self.output_interval, self.driving_force_x, self.driving_force_y, self.driving_force_z])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(output_interval={self.output_interval}, " \
+               f"driving_force_x={self.driving_force_x}, driving_force_y={self.driving_force_y}, " \
+               f"driving_force_z={self.driving_force_z})"
 
 
 class ComputeGKMA(Keyword):
@@ -776,6 +855,10 @@ class ComputeGKMA(Keyword):
         # TODO add hidden arguments?
 
         self._set_args([self.sample_interval, self.first_mode, self.last_mode, self.bin_option, self.size])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, first_mode={self.first_mode}, " \
+               f"last_mode={self.last_mode}, bin_option={self.bin_option}, size={self.size})"
 
 
 class ComputeHNEMA(Keyword):
@@ -828,6 +911,13 @@ class ComputeHNEMA(Keyword):
                         self.driving_force_x, self.driving_force_y, self.driving_force_z,
                         self.first_mode, self.last_mode, self.bin_option, self.size])
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(sample_interval={self.sample_interval}, " \
+               f"output_interval={self.output_interval}, driving_force_x={self.driving_force_x}, " \
+               f"driving_force_y={self.driving_force_y}, driving_force_z={self.driving_force_z}, " \
+               f"first_mode={self.first_mode}, last_mode={self.last_mode}, bin_option={self.bin_option}, " \
+               f"size={self.size})"
+
 
 class RunKeyword(Keyword):
 
@@ -843,6 +933,9 @@ class RunKeyword(Keyword):
         super().__init__('run', take_immediate_action=True)
         self.number_of_steps = util.cond_assign_int(number_of_steps, 0, op.gt, 'number_of_steps')
         self._set_args([self.number_of_steps])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(number_of_steps={self.number_of_steps})"
 
 
 class Minimize(Keyword):
@@ -865,6 +958,10 @@ class Minimize(Keyword):
             raise ValueError("Only the steepest descent method is implemented. The 'method' parameter must be 'sd'.")
         self.method = method
         self._set_args([self.method, self.force_tolerance, self.max_iterations])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(force_tolerance={self.force_tolerance}, " \
+               f"max_iterations={self.max_iterations}, method={self.method})"
         
 
 class ComputeCohesive(Keyword):
@@ -887,6 +984,10 @@ class ComputeCohesive(Keyword):
 
         self._set_args([self.start_factor, self.end_factor, self.num_points])
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(start_factor={self.start_factor}, end_factor={self.end_factor}, " \
+               f"num_points={self.num_points})"
+
 
 class ComputeElastic(Keyword):
 
@@ -908,6 +1009,9 @@ class ComputeElastic(Keyword):
         self.symmetry_type = symmetry_type
 
         self._set_args([self.strain_value, self.symmetry_type])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(strain_value={self.strain_value}, symmetry_type={self.symmetry_type})"
 
 
 class ComputePhonon(Keyword):
@@ -932,6 +1036,9 @@ class ComputePhonon(Keyword):
         self.displacement = util.cond_assign(displacement, 0, op.gt, 'displacement')
 
         self._set_args([self.cutoff, self.displacement])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(cutoff={self.cutoff}, displacement={self.displacement})"
 
 
 # TODO if NEP, need to check that the list of symbols matches that in the first line of the NEP potential file
@@ -968,23 +1075,40 @@ class Potential(Keyword):
             line = f.readline().split()
         if len(line) < 2:
             raise ValueError("Potential file header is not formatted correctly.")
-        potential_type, num_types = tuple(line[:2])
+        potential_type = line[0]
+        num_types = int(line[1])
         if potential_type not in Potential.supported_potentials:
             raise ValueError("Potential file does not contain a supported potential.")
         self.potential_type = potential_type
         self.num_types = util.cond_assign_int(num_types, 0, op.gt, 'num_types')
 
         options = list()
+        self.symbols = None
+        self.grouping_method = None
         if not self.potential_type == "lj":
             if not symbols:
                 raise ValueError("A list of symbols must be provided for non-LJ potentials.")
             self.symbols = util.check_symbols(symbols)
+            if not len(self.symbols) == self.num_types:
+                raise ValueError(f"Number of symbols must match the number of types in the potential file "
+                                 f"({self.num_types}).")
+            if grouping_method is not None:
+                print("Warning: grouping_method is not used for non-LJ potentials.")
         else:
+            if symbols:
+                print("Warning: symbols are not used for LJ potential.")
             if grouping_method:
                 self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
                 options.append(self.grouping_method)
 
         self._set_args([self.potential_path], optional_args=options)
+
+    def __repr__(self):
+        if self.potential_type == "lj":
+            return f"{self.__class__.__name__}(potential_type={self.potential_type}, " \
+                   f"grouping_method={self.grouping_method})"
+        else:
+            return f"{self.__class__.__name__}(potential_type={self.potential_type}, symbols={self.symbols})"
 
     def update_symbols(self, symbols: List[str]) -> None:
         if not len(symbols) == self.num_types:
