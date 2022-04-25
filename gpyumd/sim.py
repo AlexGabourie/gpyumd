@@ -61,18 +61,21 @@ class Simulation:
         if copy_potentials:
             self.potentials.copy_potentials(self.directory)
 
-    def add_run(self, number_of_steps: int = None) -> "Run":
+    def add_run(self, run_name: str = None, number_of_steps: int = None) -> "Run":
         """
         Adds a new run to a simulation.
 
         Args:
+            run_name: A name for the run
             number_of_steps: number of steps to run
 
         Returns:
             A reference to the new run in the simulation.
         """
         # initialize new runs here to ensure that the same atoms object is used.
-        current_run = Run(self.atoms, number_of_steps=number_of_steps)
+        if run_name is None:
+            run_name = f"run{len(self.runs) + 1}"
+        current_run = Run(self.atoms, run_name, number_of_steps=number_of_steps)
         self.runs.append(current_run)
 
         # Propagate time steps
@@ -203,15 +206,19 @@ class StaticCalc:
 # TODO enable multiple static computations in a single run
 class Run:
 
-    def __init__(self, gpumd_atoms: GpumdAtoms, number_of_steps: int = None):
+    def __init__(self, gpumd_atoms: GpumdAtoms, run_name: str = None, number_of_steps: int = None):
         """
 
         Args:
             gpumd_atoms: Atoms for the simulation
+            run_name: Name of the run
             number_of_steps: Number of steps to be run in the Run.
         """
         if not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("gpumd_atoms must be of the GpumdAtoms type.")
+        if run_name is not None and not isinstance(run_name, str):
+            raise ValueError("run_name must be a string.")
+        self.name = run_name
         self.atoms = gpumd_atoms
         self.keywords = dict()
         self.dt_in_fs = None
