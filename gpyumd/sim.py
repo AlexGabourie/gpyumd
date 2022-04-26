@@ -66,7 +66,7 @@ class Simulation:
         Adds a new run to a simulation.
 
         Args:
-            run_name: A name for the run
+            run_name: A name for the run. Note that runs can share the same name.
             number_of_steps: number of steps to run
 
         Returns:
@@ -227,6 +227,42 @@ class Run:
             self.run_keyword = RunKeyword(number_of_steps=number_of_steps)
         self.first_run = False
 
+    def clear_run(self) -> None:
+        """
+        Resets all parameters to their default values.
+        """
+        self.keywords = dict()
+        self.dt_in_fs = None
+        self.run_keyword = None
+        self.first_run = False
+
+    def __repr__(self):
+        out = f"{self.__class__.__name__}: "
+        out += f"'{self.name}'\n" if self.name else "\n"
+        if 'velocity' in self.keywords:
+            out += f"  {self.keywords['velocity']}\n"
+        for keyword in self.keywords:
+            out += f"  {self.keywords[keyword]}\n" if not keyword == 'velocity' else ""
+
+        if self.run_keyword:
+            out += f"{self.run_keyword}steps"
+        if self.dt_in_fs:
+            if not self.run_keyword:
+                out += f"dt_in_fs={self.dt_in_fs}\n"
+            else:
+                total_time = self.run_keyword.number_of_steps * self.dt_in_fs
+                units = ['fs', 'ps', 'ns', 'ms']
+                unit_idx = 0
+                while total_time / 1e3 >= 1:
+                    total_time /= 1e3
+                    unit_idx += 1
+
+                    if unit_idx == 3:
+                        break
+
+                out += f", dt_in_fs={self.dt_in_fs} -> {total_time} {units[unit_idx]}"
+        return out
+
     def get_output(self) -> List[str]:
         keywords = copy.deepcopy(self.keywords)
         output = list()
@@ -273,7 +309,11 @@ class Run:
             return
 
         self._validate_keyword(keyword, final_check)
-        self.keywords[keyword.keyword] = keyword
+
+        if keyword.keyword == 'run':
+            self.run_keyword = keyword
+        else:
+            self.keywords[keyword.keyword] = keyword
 
     def _validate_keyword(self, keyword, final_check: bool = False) -> None:
         if keyword.keyword == 'time_step':
@@ -282,8 +322,7 @@ class Run:
             self.dt_in_fs = keyword.dt_in_fs  # update for propagation
 
         if keyword.keyword == 'run' and self.run_keyword:
-            print("Warning: Only one 'run' keyword allowed per Run. "
-                  "If adding this keyword, the previous will be overwritten.")
+            print("Warning: Previous 'run' keyword overwritten.")
 
         # check for all grouped keywords except 'fix'
         if keyword.grouping_method is not None and (self.atoms.num_group_methods - 1) < keyword.grouping_method:
