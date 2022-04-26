@@ -147,12 +147,12 @@ class Ensemble(Keyword):
         self._set_args([self.ensemble_method])
 
         self.ensemble = None
-        ensemble_type = self.ensemble_method.split('_')[0]
-        if ensemble_type == 'nvt':
+        self.ensemble_type = self.ensemble_method.split('_')[0]
+        if self.ensemble_type == 'nvt':
             self.ensemble = Ensemble.NVT()
-        elif ensemble_type == 'npt':
+        elif self.ensemble_type == 'npt':
             self.ensemble = Ensemble.NPT()
-        elif ensemble_type == 'heat':
+        elif self.ensemble_type == 'heat':
             self.ensemble = Ensemble.Heat()
 
     def __repr__(self):
