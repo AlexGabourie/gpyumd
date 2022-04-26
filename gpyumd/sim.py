@@ -61,13 +61,16 @@ class Simulation:
         if copy_potentials:
             self.potentials.copy_potentials(self.directory)
 
-    def add_run(self, run_name: str = None, number_of_steps: int = None) -> "Run":
+    def add_run(self, number_of_steps: int = None, run_name: str = None, run_header: str = None) -> "Run":
         """
         Adds a new run to a simulation.
 
         Args:
-            run_name: A name for the run. Note that runs can share the same name.
             number_of_steps: number of steps to run
+            run_name: A name for the run. Note that runs can share the
+             same name.
+            run_header: A comment that will be added to the line above
+             all keywords for this run
 
         Returns:
             A reference to the new run in the simulation.
@@ -75,7 +78,7 @@ class Simulation:
         # initialize new runs here to ensure that the same atoms object is used.
         if run_name is None:
             run_name = f"run{len(self.runs) + 1}"
-        current_run = Run(self.atoms, run_name, number_of_steps=number_of_steps)
+        current_run = Run(self.atoms, number_of_steps=number_of_steps, run_name=run_name, run_header=run_header)
         self.runs.append(current_run)
 
         # Propagate time steps
@@ -206,19 +209,25 @@ class StaticCalc:
 # TODO enable multiple static computations in a single run
 class Run:
 
-    def __init__(self, gpumd_atoms: GpumdAtoms, run_name: str = None, number_of_steps: int = None):
+    def __init__(self, gpumd_atoms: GpumdAtoms, number_of_steps: int = None,
+                 run_name: str = None, run_header: str = None):
         """
 
         Args:
             gpumd_atoms: Atoms for the simulation
-            run_name: Name of the run
             number_of_steps: Number of steps to be run in the Run.
+            run_name: Name of the run
+            run_header: A comment that will be added to the line above
+             all keywords for this run
         """
         if not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("gpumd_atoms must be of the GpumdAtoms type.")
         if run_name is not None and not isinstance(run_name, str):
             raise ValueError("run_name must be a string.")
+        if run_header is not None and not isinstance(run_header, str):
+            raise ValueError("run_header must be a string.")
         self.name = run_name
+        self.header = run_header
         self.atoms = gpumd_atoms
         self.keywords = dict()
         self.dt_in_fs = None
@@ -239,10 +248,12 @@ class Run:
     def __repr__(self):
         out = f"{self.__class__.__name__}: "
         out += f"'{self.name}'\n" if self.name else "\n"
+        if self.header:
+            out += f"# {self.header}\n"
         if 'velocity' in self.keywords:
-            out += f"  {self.keywords['velocity']}\n"
+            out += f"  {self.keywords['velocity'].__repr__()}\n"
         for keyword in self.keywords:
-            out += f"  {self.keywords[keyword]}\n" if not keyword == 'velocity' else ""
+            out += f"  {self.keywords[keyword].__repr__()}\n" if not keyword == 'velocity' else ""
 
         if self.run_keyword:
             out += f"{self.run_keyword}steps"
@@ -263,6 +274,7 @@ class Run:
                 out += f", dt_in_fs={self.dt_in_fs} -> {total_time} {units[unit_idx]}"
         return out
 
+    # TODO add run header comment to this
     def get_output(self) -> List[str]:
         keywords = copy.deepcopy(self.keywords)
         output = list()
