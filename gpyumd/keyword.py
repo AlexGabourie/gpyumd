@@ -1106,9 +1106,10 @@ class Potential(Keyword):
     def __repr__(self):
         if self.potential_type == "lj":
             return f"{self.__class__.__name__}(potential_type={self.potential_type}, " \
-                   f"grouping_method={self.grouping_method})"
+                   f"grouping_method={self.grouping_method}, filename='{self.filename}')"
         else:
-            return f"{self.__class__.__name__}(potential_type={self.potential_type}, symbols={self.symbols})"
+            return f"{self.__class__.__name__}(potential_type={self.potential_type}, symbols={self.symbols}, " \
+                   f"filename='{self.filename}')"
 
     def update_symbols(self, symbols: List[str]) -> None:
         if not len(symbols) == self.num_types:
