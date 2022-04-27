@@ -26,12 +26,16 @@ class Simulation:
              simulation.
             directory: Directory of the simulation.
         """
-        self.directory = util.create_directory(directory) if directory else os.getcwd()
+        if directory:
+            util.create_directory(directory)
+            self.directory = directory
+        else:
+            self.directory = os.getcwd()
         self.runs = list()
         self.static_calc = None
-        if not (isinstance(gpumd_atoms, Atoms) or isinstance(gpumd_atoms, GpumdAtoms)):
-            raise ValueError("The 'atoms' parameter must be of ase.Atoms or GpumdAtoms type.")
-        self.atoms = copy.deepcopy(GpumdAtoms(gpumd_atoms))
+        if not isinstance(gpumd_atoms, GpumdAtoms):
+            raise ValueError("The 'gpumd_atoms' parameter must be of GpumdAtoms type.")
+        self.atoms = copy.deepcopy(gpumd_atoms)
         self.potentials = None
 
     def create_simulation(self, copy_potentials: bool = False) -> None:
@@ -48,11 +52,13 @@ class Simulation:
             potential_lines = self.potentials.get_output()
             for line in potential_lines:
                 run_file.write(f"{line}\n")
+            run_file.write("\n")
             if self.static_calc:
                 static_calc_lines = self.static_calc.get_output()
                 for line in static_calc_lines:
                     run_file.write(f"{line}\n")
             for run in self.runs:
+                run_file.write("\n")
                 run_lines = run.get_output()
                 for line in run_lines:
                     run_file.write(f"{line}\n")
@@ -98,7 +104,7 @@ class Simulation:
         for run in self.runs:
             if not first_run_checked:  # denotes first run
                 run.set_first_run()
-                first_run_checked = False
+                first_run_checked = True
             # TODO add try/catch here?
             run.validate_run()
 
@@ -118,7 +124,7 @@ class Potentials:
     def __init__(self, gpumd_atoms: GpumdAtoms):
         self.potentials = list()
         self.gpumd_atoms = gpumd_atoms
-        self.type_dict = None
+        self.type_dict = dict()
 
     def add_potential(self, potential: Potential) -> None:
         if not isinstance(potential, Potential):
@@ -282,8 +288,7 @@ class Run:
             keyword = keywords.pop('time_step', None)
             output.append(keyword.get_entry())
         for key in keywords:
-            keyword = keywords.pop(key, None)
-            output.append(keyword.get_entry())
+            output.append(keywords[key].get_entry())
         return output
 
     def set_first_run(self, first_run: bool = True) -> None:
@@ -329,7 +334,7 @@ class Run:
 
     def _validate_keyword(self, keyword, final_check: bool = False) -> None:
         if keyword.keyword == 'time_step':
-            if 'time_step' in self.keywords:
+            if 'time_step' in self.keywords and not final_check:
                 print("Warning: only one 'time_step' allowed per Run. Previous will be overwritten.")
             self.dt_in_fs = keyword.dt_in_fs  # update for propagation
 
@@ -355,9 +360,8 @@ class Run:
 
         # Check for heating ensembles
         if keyword.keyword == 'ensemble':
-            if 'ensemble' in self.keywords.keys():
-                print(f"The 'ensemble' keyword has already been used in this run. Previous ensemble will be "
-                      f"overwritten.")
+            if 'ensemble' in self.keywords.keys() and not final_check:
+                print(f"Warning: Previous 'ensemble' keyword will be overwritten for '{self.name}' run.")
 
             if not keyword.ensemble.parameters_set:
                 raise ValueError(f"Cannot add an ensemble before its parameters are set. "
@@ -414,9 +418,9 @@ class Run:
         for key in self.keywords.keys():
             self._validate_keyword(self.keywords[key], final_check=True)
 
-        if 'run' not in self.keywords:
-            raise ValueError(f"No 'run' keyword provided for this run.")
+        if self.run_keyword is None:
+            raise ValueError(f"No 'run' keyword provided for the '{self.name}' run.")
 
         if self.first_run and 'velocity' not in self.keywords:
-            raise ValueError("A 'velocity' keyword must be used before any 'run' keyword. See "
+            raise ValueError("A 'velocity' keyword must be used in the first run. See "
                              "https://gpumd.zheyongfan.org/index.php/The_velocity_keyword for details.")
