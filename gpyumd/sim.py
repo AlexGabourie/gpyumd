@@ -182,6 +182,7 @@ class Potentials:
             shutil.copy(potential.potential_path, util.get_path(directory, potential.filename))
 
 
+# TODO add comments like for run
 class StaticCalc:
 
     def __init__(self):
@@ -212,7 +213,6 @@ class StaticCalc:
 
 
 # TODO enable atoms to be updated and then have all the runs be re-validated
-# TODO enable multiple static computations in a single run
 class Run:
 
     def __init__(self, gpumd_atoms: GpumdAtoms, number_of_steps: int = None,
@@ -280,10 +280,11 @@ class Run:
                 out += f", dt_in_fs={self.dt_in_fs} -> {total_time} {units[unit_idx]}"
         return out
 
-    # TODO add run header comment to this
     def get_output(self) -> List[str]:
         keywords = copy.deepcopy(self.keywords)
         output = list()
+        if self.header:
+            output.append(f"# {self.header}")
         if 'time_step' in keywords:
             keyword = keywords.pop('time_step', None)
             output.append(keyword.get_entry())

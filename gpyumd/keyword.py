@@ -1124,7 +1124,3 @@ class Potential(Keyword):
         if not types == list(range(min(types), max(types)+1)):
             raise ValueError("types must be ascending and contiguous.")
         self._set_args(self.required_args, optional_args=types)
-
-
-
-
