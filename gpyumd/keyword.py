@@ -65,7 +65,7 @@ class Keyword:
         # Take care of grouping options
         if not (bool(grouping_method) == bool(group_id)):
             raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
-        elif grouping_method and group_id:
+        elif grouping_method is not None and group_id is not None:
             grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
             self.grouping_method = util.cond_assign_int(grouping_method, 10, op.lt, 'grouping_method')
             self.group_id = util.cond_assign_int(group_id, 0, op.ge, 'group_id')
@@ -115,7 +115,7 @@ class TimeStep(Keyword):
 
         optional = None
         self.max_distance_per_step = None
-        if max_distance_per_step:
+        if max_distance_per_step is not None:
             self.max_distance_per_step = util.cond_assign(max_distance_per_step, 0, op.gt, 'max_distance_per_step')
             optional = [self.max_distance_per_step]
 
@@ -720,7 +720,7 @@ class ComputeDOS(Keyword):
 
         options = list()
         self.num_dos_points = self.num_corr_steps
-        if num_dos_points:
+        if num_dos_points is not None:
             self.num_dos_points = util.cond_assign_int(num_dos_points, 0, op.gt, 'num_dos_points')
             options.extend(['num_dos_points', self.num_dos_points])
 
@@ -1086,7 +1086,7 @@ class Potential(Keyword):
         self.symbols = None
         self.grouping_method = None
         if not self.potential_type == "lj":
-            if not symbols:
+            if symbols is None:
                 raise ValueError("A list of symbols must be provided for non-LJ potentials.")
             self.symbols = util.check_symbols(symbols)
             if not len(self.symbols) == self.num_types:
@@ -1095,9 +1095,9 @@ class Potential(Keyword):
             if grouping_method is not None:
                 print("Warning: grouping_method is not used for non-LJ potentials.")
         else:
-            if symbols:
+            if symbols is not None:
                 print("Warning: symbols are not used for LJ potential.")
-            if grouping_method:
+            if grouping_method is not None:
                 self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
                 options.append(self.grouping_method)
 
