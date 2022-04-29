@@ -38,13 +38,14 @@ class Simulation:
         self.atoms = copy.deepcopy(gpumd_atoms)
         self.potentials = None
 
-    def create_simulation(self, copy_potentials: bool = False) -> None:
+    def create_simulation(self, copy_potentials: bool = False, use_velocity: bool = False) -> None:
         """
         Generates the required files for the gpumd simulation
 
         Args:
             copy_potentials: Whether or not to copy potentials to the
              simulation directory
+            use_velocity: Whether or not to add velocities to the xyz.in file
         """
         self.validate_potentials()
         self.validate_runs()
@@ -63,7 +64,7 @@ class Simulation:
                 for line in run_lines:
                     run_file.write(f"{line}\n")
 
-        self.atoms.write_gpumd()
+        self.atoms.write_gpumd(use_velocity=use_velocity, directory=self.directory)
         if copy_potentials:
             self.potentials.copy_potentials(self.directory)
 
