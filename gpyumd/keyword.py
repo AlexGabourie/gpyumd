@@ -1103,6 +1103,12 @@ class Potential(Keyword):
 
         self._set_args([self.potential_path], optional_args=options)
 
+    def get_entry_with_copy(self):
+        self._set_args([self.filename], optional_args=self.optional_args)
+        entry = self.get_entry()
+        self._set_args([self.potential_path], optional_args=self.optional_args)
+        return entry
+
     def __repr__(self):
         if self.potential_type == "lj":
             return f"{self.__class__.__name__}(potential_type={self.potential_type}, " \

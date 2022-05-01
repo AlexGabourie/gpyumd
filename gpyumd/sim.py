@@ -50,7 +50,7 @@ class Simulation:
         self.validate_potentials()
         self.validate_runs()
         with open(os.path.join(self.directory, 'run.in'), 'w') as run_file:
-            potential_lines = self.potentials.get_output()
+            potential_lines = self.potentials.get_output(copy_potentials=copy_potentials)
             for line in potential_lines:
                 run_file.write(f"{line}\n")
             run_file.write("\n")
@@ -160,14 +160,14 @@ class Potentials:
                     types.append(self.type_dict[symbol])
                 potential.set_types(types)
 
-    def get_output(self) -> List[str]:
+    def get_output(self, copy_potentials: bool = False) -> List[str]:
         output = list()
         lj = None
         for potential in self.potentials:
             if potential.potential_type == 'lj':
-                lj = potential.get_entry()
+                lj = potential.get_entry_with_copy() if copy_potentials else potential.get_entry()
             else:
-                output.append(potential.get_entry())
+                output.append(potential.get_entry_with_copy() if copy_potentials else potential.get_entry())
         if lj:  # 'lj' potential is last
             output.append(lj)
         return output
