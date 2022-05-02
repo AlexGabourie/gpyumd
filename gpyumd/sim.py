@@ -152,7 +152,7 @@ class Potentials:
          that have been added.
         """
         self.gpumd_atoms.set_type_dict(self.type_dict)
-        # TODO Add optional args for non-lj
+        self.gpumd_atoms.sort_atoms(sort_key='type')
         for potential in self.potentials:
             if not potential.potential_type == 'lj':
                 types = list()
