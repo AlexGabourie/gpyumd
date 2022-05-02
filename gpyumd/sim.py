@@ -37,19 +37,19 @@ class Simulation:
         self.atoms = copy.deepcopy(gpumd_atoms)
         self.potentials = None
 
-    def create_simulation(self, copy_potentials: bool = False, use_velocity: bool = False) -> None:
+    def create_simulation(self, copy_potentials: bool = True, use_velocity: bool = False) -> None:
         """
         Generates the required files for the gpumd simulation
 
         Args:
             copy_potentials: Whether or not to copy potentials to the
-             simulation directory
+             simulation directory. If False, relative path is provided.
             use_velocity: Whether or not to add velocities to the xyz.in file
         """
         self.validate_potentials()
         self.validate_runs()
         with open(os.path.join(self.directory, 'run.in'), 'w') as run_file:
-            potential_lines = self.potentials.get_output(copy_potentials=copy_potentials)
+            potential_lines = self.potentials.get_output(run_directory=None if copy_potentials else self.directory)
             for line in potential_lines:
                 run_file.write(f"{line}\n")
             run_file.write("\n")
@@ -121,6 +121,8 @@ class Simulation:
 
 class Potentials:
 
+    potentials: List[Potential]
+
     def __init__(self, gpumd_atoms: GpumdAtoms):
         self.potentials = list()
         self.gpumd_atoms = gpumd_atoms
@@ -159,14 +161,14 @@ class Potentials:
                     types.append(self.type_dict[symbol])
                 potential.set_types(types)
 
-    def get_output(self, copy_potentials: bool = False) -> List[str]:
+    def get_output(self, run_directory: str = None) -> List[str]:
         output = list()
         lj = None
         for potential in self.potentials:
             if potential.potential_type == 'lj':
-                lj = potential.get_entry_with_copy() if copy_potentials else potential.get_entry()
+                lj = potential.get_entry_rel_path(run_directory) if run_directory else potential.get_entry()
             else:
-                output.append(potential.get_entry_with_copy() if copy_potentials else potential.get_entry())
+                output.append(potential.get_entry_rel_path(run_directory) if run_directory else potential.get_entry())
         if lj:  # 'lj' potential is last
             output.append(lj)
         return output

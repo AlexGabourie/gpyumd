@@ -1018,18 +1018,20 @@ class ComputePhonon(Keyword):
 
     def __init__(self, cutoff: float, displacement: float):
         """
-        Computes the phonon dispersion using the finite-displacement method. Outputs data to the D.out and omega2.out
-        files.
+        Computes the phonon dispersion using the finite-displacement method.
+        Outputs data to the D.out and omega2.out files.
 
         https://gpumd.zheyongfan.org/index.php/The_compute_phonon_keyword
 
-        A special eigenvector.in file can be generated for GKMA and HNEMA methods using compute_phonon. Follow the
-        directions here: https://gpumd.zheyongfan.org/index.php/The_eigenvector.in_input_file
+        A special eigenvector.in file can be generated for GKMA and HNEMA
+        methods using compute_phonon. Follow the directions here:
+        https://gpumd.zheyongfan.org/index.php/The_eigenvector.in_input_file
 
         Args:
-            cutoff: Cutoff distance for calculating the force constants. [Angstroms]
-            displacement: The displacement for calculating the force constants using the finite-displacment
-                method. [Angstroms]
+            cutoff: Cutoff distance for calculating the force constants.
+             [Angstroms]
+            displacement: The displacement for calculating the force
+             constants using the finite-displacment method. [Angstroms]
         """
         super().__init__('compute_phonon', take_immediate_action=True)
         self.cutoff = util.cond_assign(cutoff, 0, op.gt, 'cutoff')
@@ -1051,24 +1053,29 @@ class Potential(Keyword):
     def __init__(self, filename: str, symbols: List[str] = None, grouping_method: int = None, directory: str = None):
         """
         Special keyword that contains basic information about the potential.
-        Note: This does NOT check if the formatting of the potential is correct. It also does not provide the full
-        grammar of the kewyord.
+        Note: This does NOT check if the formatting of the potential is
+        correct. It also does not provide the full grammar of the kewyord.
 
         https://gpumd.zheyongfan.org/index.php/The_potential_keyword
 
         Args:
             filename: Filename of the potential.
-            symbols: A list of atomic symbols associated with the potential. Required for all but LJ potentials. The
-                order is important.
-            grouping_method: The grouping method used to exclude intra-material interactions for LJ potentials.
-            directory: The directory in which the potential will be found. If None provided, assumes potential will be
-                in run directory.
+            symbols: A list of atomic symbols associated with the potential.
+             Required for all but LJ potentials. The order is important.
+            grouping_method: The grouping method used to exclude
+             intra-material interactions for LJ potentials.
+            directory: The directory in which the potential will be found. If
+             None provided, assumes potential will be in current directory.
         """
         super().__init__('potential', take_immediate_action=True)
         if not isinstance(filename, str):
             raise ValueError("filename must be a string.")
         self.filename = filename
-        self.potential_path = filename if not directory else util.get_path(directory, filename)
+        if directory is not None and isinstance(directory, str):
+            self.directory = directory
+            self.potential_path = util.get_path(directory, filename)
+        else:
+            self.potential_path = filename
         if not os.path.exists(self.potential_path):
             raise ValueError("The path to the potential does not exist.")
         with open(self.potential_path, 'r') as f:
@@ -1101,12 +1108,14 @@ class Potential(Keyword):
                 self.grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
                 options.append(self.grouping_method)
 
-        self._set_args([self.potential_path], optional_args=options)
+        self._set_args([self.filename], optional_args=options)
 
-    def get_entry_with_copy(self):
-        self._set_args([self.filename], optional_args=self.optional_args)
+    def get_entry_rel_path(self, dest: str) -> str:
+        relative_path = os.path.relpath(os.path.abspath(self.directory), os.path.abspath(dest))
+        relative_path = os.path.join(relative_path, self.filename)
+        self._set_args([relative_path], optional_args=self.optional_args)
         entry = self.get_entry()
-        self._set_args([self.potential_path], optional_args=self.optional_args)
+        self._set_args([self.filename], optional_args=self.optional_args)
         return entry
 
     def __repr__(self):
