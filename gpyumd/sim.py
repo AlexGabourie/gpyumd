@@ -4,7 +4,6 @@ import os
 import shutil
 from typing import List
 
-from ase import Atoms
 from gpyumd.atoms import GpumdAtoms
 from gpyumd.keyword import Ensemble, Keyword, RunKeyword, Potential
 import gpyumd.util as util
@@ -90,7 +89,7 @@ class Simulation:
 
         # Propagate time steps
         dt_in_fs = None
-        if len(self.runs) > 2:
+        if len(self.runs) > 1:
             dt_in_fs = self.runs[-2].get_dt_in_fs()
         self.runs[-1].set_dt_in_fs(dt_in_fs)
         return current_run
