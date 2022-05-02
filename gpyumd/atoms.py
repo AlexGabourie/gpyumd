@@ -120,7 +120,7 @@ class GpumdAtoms(Atoms):
         # Needed for structure file
         self.max_neighbors = None
         self.cutoff = None
-        self.type_dict = dict()  # keys (symbol): value (gpumd type)
+        self.type_dict = dict()  # keys (symbol): value (gpumd type - int)
         for i, type_ in enumerate(list(set(self.get_chemical_symbols()))):
             self.type_dict[type_] = i
 
@@ -145,7 +145,7 @@ class GpumdAtoms(Atoms):
     @staticmethod
     def __atom_symbol_sortkey(atom: Atom, order: List[str]) -> int:
         """
-        Used as a key for sorting atom type.
+        Used as a key for sorting by atom symbol.
 
         Args:
             atom: atom to determine order of
@@ -231,7 +231,9 @@ class GpumdAtoms(Atoms):
     def sort_atoms(self, sort_key: str = None, order: Union[List[str], List[int]] = None,
                    group_method: int = None) -> None:
         """
-        Sorts the atoms according to a specified order.
+        Sorts the atoms according to a specified order. If not order is
+        specified, an ascending order based on the type_dict or
+        group method will be used.
 
         Args:
             sort_key: How to sort atoms ('group', 'type')
@@ -248,26 +250,31 @@ class GpumdAtoms(Atoms):
         index_range = range(len(self))
         if sort_key == 'type':
             if not order:
-                raise ValueError("Sorting by type requires the 'order' parameter.")
-            for symbol in order:
-                if symbol not in self.type_dict.keys():
-                    raise ValueError(f"The {symbol} symbol is not found in this GpumdAtoms object.")
-            self.__enforce_sort(sorted(index_range,
-                                       key=lambda atom_idx: self.__atom_symbol_sortkey(self[atom_idx], order)))
+                self.__enforce_sort(sorted(index_range, key=lambda atom_idx: self.type_dict[self[atom_idx].symbol]))
+            else:
+                for symbol in order:
+                    if symbol not in self.type_dict.keys():
+                        raise ValueError(f"The {symbol} symbol is not found in this GpumdAtoms object.")
+                self.__enforce_sort(sorted(index_range,
+                                           key=lambda atom_idx: self.__atom_symbol_sortkey(self[atom_idx], order)))
         elif sort_key == 'group':
-            if not (order and group_method):
-                raise ValueError("Sorting by group requires the 'order' and 'group_method' parameters.")
+            if group_method is None:
+                raise ValueError("Sorting by group requires the 'group_method' parameter.")
             group_method = util.cond_assign_int(group_method, 0, op.ge, 'group_method')
             if group_method >= self.num_group_methods:
                 raise ValueError("The group_method parameter is greater than the number of grouping methods assigned.")
-            order = util.check_list(order, 'order', dtype=int)
-            if not (sorted(order) == list(range(self.group_methods[group_method].num_groups))):
-                raise ValueError("Not all groups are accounted for.")
-            self.__enforce_sort(
-                sorted(index_range, key=lambda atom_idx: self.__atom_group_sortkey(self[atom_idx],
-                                                                                   self.group_methods[
-                                                                                       group_method].groups,
-                                                                                   order)))
+            if order is None:
+                self.__enforce_sort(sorted(index_range,
+                                           key=lambda atom_idx: self.group_methods[group_method].groups[atom_idx]))
+            else:
+                order = util.check_list(order, 'order', dtype=int)
+                if not (sorted(order) == list(range(self.group_methods[group_method].num_groups))):
+                    raise ValueError("Not all groups are accounted for.")
+                self.__enforce_sort(
+                    sorted(index_range, key=lambda atom_idx: self.__atom_group_sortkey(self[atom_idx],
+                                                                                       self.group_methods[
+                                                                                           group_method].groups,
+                                                                                       order)))
         elif sort_key is not None:
             print("Invalid sort_key. No sorting is done.")
 
