@@ -329,7 +329,7 @@ class GpumdAtoms(Atoms):
 
         # write structure
         filename = util.get_path(directory, gpumd_file)
-        with open(filename, 'w') as f:
+        with open(filename, 'w', newline='') as f:
             f.writelines(summary)
             for atom in self:
                 pos = atom.position
@@ -432,7 +432,7 @@ class GpumdAtoms(Atoms):
             raise ValueError("Both the unit cell and basis must be defined to write the basis.in file. "
                              "See the 'add_basis' function.")
         masses = self.get_masses()
-        with open(util.get_path(directory, filename), 'w') as f:
+        with open(util.get_path(directory, filename), 'w', newline='') as f:
             f.writelines(f"{len(self.unitcell)}\n")
             for basis_id in self.unitcell:
                 f.writelines(f"{basis_id} {masses[basis_id]}\n")

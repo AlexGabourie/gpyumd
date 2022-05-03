@@ -48,7 +48,7 @@ class Simulation:
         """
         self.validate_potentials()
         self.validate_runs()
-        with open(os.path.join(self.directory, 'run.in'), 'w') as run_file:
+        with open(os.path.join(self.directory, 'run.in'), 'w', newline='') as run_file:
             potential_lines = self.potentials.get_output(run_directory=None if copy_potentials else self.directory)
             for line in potential_lines:
                 run_file.write(f"{line}\n")

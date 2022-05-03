@@ -1,7 +1,7 @@
 import pickle
 import os
 import operator as op
-from typing import Union, List, Tuple, Set
+from typing import Union, List, Tuple, Set, Any
 from dataclasses import dataclass
 from gpyumd import util
 
@@ -256,7 +256,7 @@ class LennardJones:
 
                 out_txt += f"\n{epsilon} {sigma} {cutoff}"
 
-        with open(filename, 'w') as ljfile:
+        with open(filename, 'w', newline='') as ljfile:
             ljfile.writelines(out_txt)
 
     def check_pair(self, pair: Set[str]) -> None:
@@ -285,7 +285,7 @@ class LennardJones:
         if len(self.ignored_pairs) > 0:
             out_str += "\nIgnored Pairs (Order not important)\n"
             for pair in self.ignored_pairs:
-                pair_list = list(pair)
+                pair_list: List[Any] = list(pair)
                 if len(pair_list) == 1:
                     pair_list.append(pair_list[0])
                 out_str += f"[{pair_list[0]}, {pair_list[1]}]\n"

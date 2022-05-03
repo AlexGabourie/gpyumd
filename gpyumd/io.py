@@ -29,7 +29,7 @@ def read_gpumd(atom_symbols: List[str] = None,
         GpumdAtoms
     """
     filepath = util.get_path(directory, gpumd_file)
-    with open(filepath) as f:
+    with open(filepath, 'r') as f:
         xyz_lines = f.readlines()
 
     if atom_symbols:

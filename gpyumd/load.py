@@ -608,4 +608,3 @@ def load_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", dir
         bin_count[int(np.floor(np.abs(freq) / bin_f_size) - shift)] += 1
     return {'fq': fq, 'fmax': fmax, 'fmin': fmin, 'shift': shift,
             'nbins': nbins, 'bin_count': bin_count, 'bin_f_size': bin_f_size}
-
