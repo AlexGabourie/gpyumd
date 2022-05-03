@@ -1110,8 +1110,23 @@ class Potential(Keyword):
 
         self._set_args([self.filename], optional_args=options)
 
-    def get_entry_rel_path(self, dest: str) -> str:
-        relative_path = os.path.relpath(os.path.abspath(self.directory), os.path.abspath(dest))
+    def get_entry_rel_path(self, driver_directory: str, sim_directory: str = None) -> str:
+        """
+        Gets the entry for a run.in file for the potential keyword. This
+        is a special call used instead of 'get_entry' like other keywords.
+
+        Args:
+            driver_directory: The directory that the driver file is in.
+            sim_directory: Directory of simulation. Not None only when
+             potentials will be copied to the simulation directory.
+
+        Returns:
+            Entry for run.in
+        """
+        if sim_directory:
+            relative_path = os.path.relpath(os.path.abspath(sim_directory), os.path.abspath(driver_directory))
+        else:
+            relative_path = os.path.relpath(os.path.abspath(self.directory), os.path.abspath(driver_directory))
         relative_path = os.path.join(relative_path, self.filename)
         self._set_args([relative_path], optional_args=self.optional_args)
         entry = self.get_entry()

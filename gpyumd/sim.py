@@ -15,7 +15,7 @@ __email__ = "agabourie47@gmail.com"
 # TODO make a simulation set that enables multiple simulations to be tracked
 class Simulation:
 
-    def __init__(self, gpumd_atoms: GpumdAtoms, directory: str = None):
+    def __init__(self, gpumd_atoms: GpumdAtoms, run_directory: str = None, driver_directory: str = None):
         """
         Stores the relevant information for a full 'gpumd' executable
         simulation.
@@ -23,13 +23,21 @@ class Simulation:
         Args:
             gpumd_atoms: Final structure to be used with the GPUMD
              simulation.
-            directory: Directory of the simulation.
+            run_directory: Directory of the simulation.
+            driver_directory: Directory where the driver input file will
+             be found. Defaults to run_directory.
         """
-        if directory:
-            util.create_directory(directory)
-            self.directory = directory
+        if run_directory:
+            util.create_directory(run_directory)
+            self.directory = run_directory
         else:
             self.directory = os.getcwd()
+        self.driver_directory = driver_directory
+        if driver_directory:
+            util.create_directory(driver_directory)
+            self.driver_directory = driver_directory
+        else:
+            self.driver_directory = self.directory
         self.runs = list()
         self.static_calc = None
         if not isinstance(gpumd_atoms, GpumdAtoms):
@@ -49,7 +57,8 @@ class Simulation:
         self.validate_potentials()
         self.validate_runs()
         with open(os.path.join(self.directory, 'run.in'), 'w', newline='') as run_file:
-            potential_lines = self.potentials.get_output(run_directory=None if copy_potentials else self.directory)
+            potential_lines = self.potentials.get_output(driver_directory=self.driver_directory,
+                                                         sim_directory=self.directory if copy_potentials else None)
             for line in potential_lines:
                 run_file.write(f"{line}\n")
             run_file.write("\n")
@@ -161,14 +170,15 @@ class Potentials:
                     types.append(self.type_dict[symbol])
                 potential.set_types(types)
 
-    def get_output(self, run_directory: str = None) -> List[str]:
+    def get_output(self, driver_directory: str, sim_directory: str = None, ) -> List[str]:
         output = list()
         lj = None
         for potential in self.potentials:
+            entry = potential.get_entry_rel_path(driver_directory, sim_directory)
             if potential.potential_type == 'lj':
-                lj = potential.get_entry_rel_path(run_directory) if run_directory else potential.get_entry()
+                lj = entry
             else:
-                output.append(potential.get_entry_rel_path(run_directory) if run_directory else potential.get_entry())
+                output.append(entry)
         if lj:  # 'lj' potential is last
             output.append(lj)
         return output
