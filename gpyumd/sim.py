@@ -279,7 +279,7 @@ class Run:
                     if unit_idx == 3:
                         break
 
-                out += f", dt_in_fs={self.dt_in_fs} -> {total_time} {units[unit_idx]}"
+                out += f", dt_in_fs={self.dt_in_fs} -> {total_time} {units[unit_idx]}\n\n"
         return out
 
     def get_output(self) -> List[str]:
@@ -292,6 +292,7 @@ class Run:
             output.append(keyword.get_entry())
         for key in keywords:
             output.append(keywords[key].get_entry())
+        output.append(self.run_keyword.get_entry())
         return output
 
     def set_first_run(self, first_run: bool = True) -> None:
@@ -305,6 +306,8 @@ class Run:
     def get_dt_in_fs(self) -> float:
         return self.dt_in_fs
 
+    # TODO keep a dictionary that stores the index of runs in runs list, but with keys of the name, easy way
+    #   to allow overwriting
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
     def add_keyword(self, keyword: Keyword, final_check: bool = False) -> None:
         """
@@ -366,7 +369,7 @@ class Run:
             if 'ensemble' in self.keywords.keys() and not final_check:
                 print(f"Warning: Previous 'ensemble' keyword will be overwritten for '{self.name}' run.")
 
-            if not keyword.ensemble.parameters_set:
+            if not keyword.ensemble_type == 'nve' and not keyword.ensemble.parameters_set:
                 raise ValueError(f"Cannot add an ensemble before its parameters are set. "
                                  f"See 'set_parameters' function.")
 
@@ -414,7 +417,7 @@ class Run:
                     raise ValueError(f"An NVT or NPT ensemble is needed for the {keyword.keyword} keyword.")
 
             if keyword.keyword == 'compute_dos':
-                if 1e3 / (self.dt_in_fs * keyword.keyword.sample_interval) < keyword.keyword.max_omega / math.pi:
+                if 1e3 / (self.dt_in_fs * keyword.sample_interval) < keyword.max_omega / math.pi:
                     raise ValueError("Sampling rate is less than the Nyquist rate.")
 
     def validate_run(self) -> None:
