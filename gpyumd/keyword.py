@@ -200,7 +200,8 @@ class Ensemble(Keyword):
                                                      barostat_coupling, condition, pdict)
         self.required_args.extend(required_args)
 
-    def get_npt_pdict(self, condition: str) -> Dict[str, None]:
+    @staticmethod
+    def get_npt_pdict(condition: str) -> Dict[str, None]:
         """
 
         <condition> --> <required keys for pdict> \n
@@ -214,7 +215,7 @@ class Ensemble(Keyword):
         Returns:
             pdict to use with the set_npt_parameters function
         """
-        params = self.NPT.get_pdict_params(condition)
+        params = Ensemble.NPT.get_pdict_params(condition)
         pdict = dict()
         for param in params:
             pdict[param] = None

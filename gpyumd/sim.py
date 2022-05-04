@@ -61,8 +61,8 @@ class Simulation:
                                                          sim_directory=self.directory if copy_potentials else None)
             for line in potential_lines:
                 run_file.write(f"{line}\n")
-            run_file.write("\n")
             if self.static_calc:
+                run_file.write("\n")
                 static_calc_lines = self.static_calc.get_output()
                 for line in static_calc_lines:
                     run_file.write(f"{line}\n")
@@ -219,8 +219,7 @@ class StaticCalc:
             keyword = keywords.pop('minimize', None)
             output.append(keyword.get_entry())
         for key in keywords:
-            keyword = keywords.pop(key, None)
-            output.append(keyword.get_entry())
+            output.append(keywords[key].get_entry())
         return output
 
 
