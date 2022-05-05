@@ -61,9 +61,9 @@ class Keyword:
         if optional_args:
             self.optional_args = self._option_check(optional_args)
 
-    def valid_group_options(self, grouping_method: int, group_id: int) -> bool:
+    def valid_group_options(self, grouping_method: int = None, group_id: int = None) -> bool:
         # Take care of grouping options
-        if not (bool(grouping_method) == bool(group_id)):
+        if op.xor(grouping_method is None, group_id is None):
             raise ValueError("If the group option is to be used, both grouping_method and group_id must be defined.")
         elif grouping_method is not None and group_id is not None:
             grouping_method = util.cond_assign_int(grouping_method, 0, op.ge, 'grouping_method')
@@ -598,7 +598,7 @@ class DumpEXYZ(Keyword):
 
 class Compute(Keyword):
 
-    def __init__(self, sample_interval: int, output_interval: int, grouping_method: int, temperature: bool = False,
+    def __init__(self, grouping_method: int, sample_interval: int, output_interval: int,  temperature: bool = False,
                  potential: bool = False, force: bool = False, virial: bool = False, jp: bool = False,
                  jk: bool = False):
         """
@@ -607,9 +607,9 @@ class Compute(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_compute_keyword
 
         Args:
+            grouping_method: The grouping method to use.
             sample_interval: Sample quantities this many time steps.
             output_interval: Averaging over so many sampled data before giving one output.
-            grouping_method: The grouping method to use.
             temperature: True to output temperature, False otherwise.
             potential: True to output the potential energy, False otherwise.
             force: True to output the force vector, False otherwise.
