@@ -38,7 +38,9 @@ class Simulation:
             self.driver_directory = driver_directory
         else:
             self.driver_directory = self.directory
+
         self.runs = list()
+        self._runs_dict = dict()
         self.static_calc = None
         if not isinstance(gpumd_atoms, GpumdAtoms):
             raise ValueError("The 'gpumd_atoms' parameter must be of GpumdAtoms type.")
@@ -76,6 +78,8 @@ class Simulation:
         if copy_potentials:
             self.potentials.copy_potentials(self.directory)
 
+    # TODO keep a dictionary that stores the index of runs in runs list, but with keys of the name, easy way
+    #   to allow overwriting
     def add_run(self, number_of_steps: int = None, run_name: str = None, run_header: str = None) -> "Run":
         """
         Adds a new run to a simulation.
@@ -94,7 +98,12 @@ class Simulation:
         if run_name is None:
             run_name = f"run{len(self.runs) + 1}"
         current_run = Run(self.atoms, number_of_steps=number_of_steps, run_name=run_name, run_header=run_header)
-        self.runs.append(current_run)
+        if run_name in self._runs_dict:
+            print(f"Warning: Overwriting previous run with name '{current_run.name}'")
+            self.runs[self._runs_dict[run_name]] = current_run
+        else:
+            self.runs.append(current_run)
+            self._runs_dict[current_run.name] = len(self.runs) - 1
 
         # Propagate time steps
         dt_in_fs = None
@@ -315,8 +324,6 @@ class Run:
     def get_dt_in_fs(self) -> float:
         return self.dt_in_fs
 
-    # TODO keep a dictionary that stores the index of runs in runs list, but with keys of the name, easy way
-    #   to allow overwriting
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
     def add_keyword(self, keyword: Keyword, final_check: bool = False) -> None:
         """
