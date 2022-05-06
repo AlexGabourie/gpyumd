@@ -200,7 +200,11 @@ class Potentials:
             directory: Directory to copy potentials to
         """
         for potential in self.potentials:
-            shutil.copy(potential.potential_path, util.get_path(directory, potential.filename))
+            src = os.path.abspath(potential.potential_path)
+            dest = os.path.abspath(util.get_path(directory, potential.filename))
+            if src == dest:
+                continue
+            shutil.copy(src, dest)
 
 
 # TODO add comments like for run
