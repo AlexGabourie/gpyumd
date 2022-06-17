@@ -470,6 +470,7 @@ class GpumdAtoms(Atoms):
 
         Returns:
             (index of the grouping method, number of atoms in each group)
+
         """
         group = GroupByPosition(split, direction)
         group.update(self)
