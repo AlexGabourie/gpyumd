@@ -11,8 +11,9 @@ accelerated molecular dynamics package, Graphics Processing Units Molecular Dyna
 leverages the functionality of the popular python package, Atomic Simulation Environment (ASE_), but is otherwise
 independent to remain flexible and best serve GPUMD_ directly.
 
-A primary goal of this project is to have gpyumd_ remain up-to-date with the `GPUMD Documentation <GPUMD_docs>`_. If
-there is a feature missing, a bug, or you have a feature request, please create an issue in the gpyumd_ repository.
+A primary goal of this project is to have gpyumd_ remain up-to-date with the `GPUMD Documentation <GPUMD_docs>`_. It
+currently does not support NEP-specific functionality, but will in the future. If there is a feature missing, a bug, or
+you have a feature request, please create an issue in the gpyumd_ repository.
 
 Note: This software is still in development and, like GPUMD_, will likely undergo (potentially major) changes as the
 permanent features are decided.
