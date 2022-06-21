@@ -5,7 +5,9 @@ div.asetop {text-align: right}
 dl.function {background-color: #f5f5f5}
 dl.method {background-color: #f5f5f5}
 dl.class {background-color: #f5f5f5}
-.rst-content dl:not(.docutils) dt {
+
+html.writer-html4 .rst-content dl:not(.docutils)>dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple)>dt {
     background: #dcf5e4;
     color: #000000;
     border-top: solid 3px #444444;
