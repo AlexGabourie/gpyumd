@@ -13,6 +13,7 @@ __email__ = "agabourie47@gmail.com"
 
 
 # TODO make a simulation set that enables multiple simulations to be tracked
+# TODO make simulation handle the extra files needed by some keywords (i.e., basis, kpoints)
 class Simulation:
 
     def __init__(self, gpumd_atoms: GpumdAtoms, run_directory: str = None, driver_directory: str = None):

@@ -31,7 +31,7 @@ The first example is an equlibrium MD simulation that calculates the thermal con
 how to construct a :class:`~gpyumd.sim.Run`. The second is a phonon calculation of Si, which demonstrates how to add
 static calculations.
 
-Example: Thermal Conductivity of Graphene
+Example: thermal conductivity of graphene
 =========================================
 
 In this example, we will setup a simulation for an EMD thermal conductivity calculation for graphene using the
@@ -39,6 +39,13 @@ In this example, we will setup a simulation for an EMD thermal conductivity calc
 :class:`~gpyumd.atoms.GpumdAtoms` class.
 ::
 
+    # import statements
+    from ase.build import graphene_nanoribbon
+    from gpyumd.atoms import GpumdAtoms
+    from gpyumd.sim import Simulation
+    import gpyumd.keyword as kwd
+
+    # structure creation
     gr = GpumdAtoms(graphene_nanoribbon(60, 36, type='armchair', sheet=True, vacuum=3.35/2, C_C=1.44))
     gr.euler_rotate(theta=90)
     lx, lz, ly = gr.cell.lengths()
@@ -185,6 +192,75 @@ simulation directory or if you want to use relative paths to the potential files
     compute_hac 20 50000 10
     run 10000000
 
+Example: phonon dispersion of silicon
+=====================================
+
+In this example, we will setup a phonon dispersion calculation of silicon (Si) using the :class:`~gpyumd.sim.Simulation`
+class. This example emphasizes the inclusion of static calculations when building a :class:`~gpyumd.sim.Simulation`.
+First, we will set up the Si structure. For more information about the structure generation, see :doc:`atoms`.
+::
+
+    # import statements
+    from ase.lattice.cubic import Diamond
+    from ase.build import bulk
+    from gpyumd.atoms import GpumdAtoms
+    from gpyumd.sim import Simulation
+    import gpyumd.keyword as kwd
+
+    # Create unit cell
+    a=5.434
+    Si_UC = GpumdAtoms(bulk('Si', 'diamond', a=a))
+    Si_UC.add_basis()
+
+    # Create 8 atom diamond structure
+    Si = Si_UC.repeat([2,2,1])
+    Si.set_cell([a, a, a])
+    Si.wrap()
+
+    # Complete full supercell
+    Si = Si.repeat([2,2,2])
+    Si.set_max_neighbors(4)
+    Si.set_cutoff(3)
+
+Next, we need to create the relevant extra files needed for the phonon dispersion calculation: `kpoints.in`_ and
+`basis.in`_. (In the future, these files may also be handled by the :class:`~gpyumd.sim.Simulation` class.)
+::
+
+    Si.write_basis()
+    Si_UC.write_kpoints(path='GXKGL',npoints=400)
+
+We can now create the :class:`~gpyumd.sim.Simulation` object that we want to work with:
+::
+
+    phonon_sim = Simulation(Si, driver_directory='.')
+
+We want to calculate the phonon dispersion, so we add the :class:`~gpyumd.keyword.ComputePhonon` keyword to the
+`phonon_sim` object using the :meth:`~gpyumd.sim.Simulation.add_static_calc` method.
+::
+
+    phonon_sim.add_static_calc(kwd.ComputePhonon(cutoff=5, displacement=0.005))
+
+Next, we need to define the potential that describes the Si interactions:
+::
+
+    potential_directory = "/path/to/GPUMD/potentials/tersoff"
+    tersoff_potential = \
+        kwd.Potential(filename='Si_Fan_2019.txt', symbols=['Si'], directory=potential_directory)
+    phonon_sim.add_potential(tersoff_potential)
+
+Finally, we can generate the `run.in`_ file and the `xyz.in`_ file and move the potential file to the simulation
+directory using:
+::
+
+    phonon_sim.create_simulation(copy_potentials=True)
+
+The resulting `run.in`_ file has the contents:
+
+.. code-block:: text
+
+    potential Si_Fan_2019.txt 0
+
+    compute_phonon 5 0.005
 
 
 .. _driver file: https://gpumd.zheyongfan.org/index.php/Main_Page#The_driver_input_file
@@ -193,6 +269,8 @@ simulation directory or if you want to use relative paths to the potential files
 .. _keywords: https://gpumd.zheyongfan.org/index.php/Main_Page#Inputs_for_the_src.2Fgpumd_executable
 .. _GPUMD: https://github.com/brucefan1983/GPUMD
 .. _ensemble: https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
+.. _kpoints.in: https://gpumd.zheyongfan.org/index.php/The_kpoints.in_input_file
+.. _basis.in: https://gpumd.zheyongfan.org/index.php/The_basis.in_input_file
 
 List of all methods
 ===================
