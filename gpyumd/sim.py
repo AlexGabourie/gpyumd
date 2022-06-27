@@ -127,11 +127,25 @@ class Simulation:
             run.validate_run()
 
     def add_static_calc(self, keyword: Keyword) -> None:
+        """
+        Adds a static calculation to the current simulation object.
+        Currently, only the 'compute_cohesive', 'compute_elastic',
+        'compute_phonon', and 'minimize' keywords are static.
+
+        Args:
+            keyword: A keyword object for a static calculation
+        """
         if not self.static_calc:
             self.static_calc = StaticCalc()
         self.static_calc.add_calc(keyword)
 
     def add_potential(self, potential: Potential) -> None:
+        """
+        Adds a potential keyword to the simulation object.
+
+        Args:
+            potential: A potential keyword object
+        """
         if not self.potentials:
             self.potentials = Potentials(self.atoms)
         self.potentials.add_potential(potential)
@@ -147,6 +161,12 @@ class Potentials:
         self.type_dict = dict()
 
     def add_potential(self, potential: Potential) -> None:
+        """
+        Adds a potential keyword to the current list of potentials.
+
+        Args:
+            potential: A potential keyword object
+        """
         if not isinstance(potential, Potential):
             raise ValueError("Must add a Potential keyword to the potentials list.")
 
@@ -305,6 +325,12 @@ class Run:
         return out
 
     def get_output(self) -> List[str]:
+        """
+        Gets the run.in, textual representation of the current run.
+
+        Returns:
+            The Run object in text format of run.in file
+        """
         keywords = copy.deepcopy(self.keywords)
         output = list()
         if self.header:
@@ -318,14 +344,32 @@ class Run:
         return output
 
     def set_first_run(self, first_run: bool = True) -> None:
+        """
+        Marks this run as the first in a simulation. Required to ensure
+        that the 'velocity' keyword is used.
+
+        Args:
+            first_run: Whether or not run is the first in a simulation.
+        """
         self.first_run = first_run
 
     def set_dt_in_fs(self, dt_in_fs: float = None) -> None:
+        """
+        Sets the timestep for the run in units of femtoseconds.
+
+        Args:
+            dt_in_fs: Timestep in femtoseconds.
+        """
         if not dt_in_fs:
             dt_in_fs = 1  # 1 fs default
         self.dt_in_fs = dt_in_fs
 
     def get_dt_in_fs(self) -> float:
+        """
+
+        Returns:
+            The time step in femtosectonds
+        """
         return self.dt_in_fs
 
     # TODO add a warning if a keyword will not have an output during a run (i.e. output interval is too large)
@@ -441,6 +485,10 @@ class Run:
                     raise ValueError("Sampling rate is less than the Nyquist rate.")
 
     def validate_run(self) -> None:
+        """
+        Validates that all used keywords are used correctly, consistent
+        with the atoms, for the Run.
+        """
         for key in self.keywords.keys():
             self._validate_keyword(self.keywords[key], final_check=True)
 
