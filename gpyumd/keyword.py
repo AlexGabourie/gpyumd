@@ -359,8 +359,9 @@ class NeighborOff(Keyword):
 
     def __init__(self):
         """
-        Tells GPUMD to not update the neighbor list during simulations. Should only be used when there is no atom
-        diffusion in the simulation.
+        Tells GPUMD to not update the neighbor list during simulations.
+        Should only be used when there is no atom diffusion in the
+        simulation.
 
         https://gpumd.zheyongfan.org/index.php/The_neighbor_keyword
 
@@ -452,7 +453,8 @@ class DumpPosition(Keyword):
             interval: Number of time steps between each dump of the position data.
             grouping_method: The grouping method to use.
             group_id: The group ID of the atoms to dump the position of.
-            precision: Only 'single' or 'double' is accepted. The '%g' format is used if nothing specified.
+            precision: Only 'single' or 'double' is accepted. The '%g' format is
+             used if nothing specified.
         """
         super().__init__('dump_position')
         self.interval = util.cond_assign_int(interval, 0, op.gt, 'interval')

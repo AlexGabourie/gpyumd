@@ -66,14 +66,14 @@ The :class:`~gpyumd.atoms.GpumdAtoms` class also supports sorting the atoms by a
 changes the order of the atoms when they are output to an `xyz.in`_ file. We can order our graphene-MoS\ :sub:`2`
 structure from the previous section by type using the following:
 ::
-    g_mos2_hetero.sort_atoms(sort_key="type", order=["Mo", "S", "C"])
+g_mos2_hetero.sort_atoms(sort_key="type", order=["Mo", "S", "C"])
 
 In this case, the ``order`` parameter takes an ordered list of the atomic symbols in the
 :class:`~gpyumd.atoms.GpumdAtoms` object.
 
 We can order our graphene nanoribbon structure by group using the following:
 ::
-    gnr.sort_atoms(sort_key="group", order=[0,1,8,2,3,4,5,6,7], group_method=0)
+gnr.sort_atoms(sort_key="group", order=[0,1,8,2,3,4,5,6,7], group_method=0)
 
 In this case, the ``order`` parameter takes an ordered list of integers that directly correspond to the group numbers
 of the :class:`~gpyumd.atoms.GpumdAtoms` object. Note that we also have to specify the group method as a
@@ -91,8 +91,7 @@ File Output
 The :class:`~gpyumd.atoms.GpumdAtoms` class can also directly write relevant GPUMD_ files. The most common file to write
 is the `xyz.in`_, which can be output by using the following:
 ::
-
-    gnr.write_gpumd()
+gnr.write_gpumd()
 
 The :meth:`~gpyumd.atoms.GpumdAtoms.write_gpumd` method has the optional arguments ``use_velocity``, which is dictates
 whether or not the velocities stored by the :class:`~gpyumd.atoms.GpumdAtoms` object will be written to the `xyz.in`_
