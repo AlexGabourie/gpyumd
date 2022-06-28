@@ -6,11 +6,16 @@ dl.function {background-color: #f5f5f5}
 dl.method {background-color: #f5f5f5}
 dl.class {background-color: #f5f5f5}
 
-html.writer-html4 .rst-content dl:not(.docutils)>dt,
-html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple)>dt {
+html.writer-html4 .rst-content dl:not(.docutils)>dt, html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple)>dt {
+    display: table;
+    margin: 6px 0;
+    font-size: 90%;
+    line-height: normal;
     background: #dcf5e4;
     color: #000000;
     border-top: solid 3px #444444;
+    padding: 6px;
+    position: relative;
 }
 
 img {border: none;}
