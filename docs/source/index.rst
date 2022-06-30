@@ -27,3 +27,4 @@ permanent features are decided.
    :maxdepth: 2
 
    module
+   example
