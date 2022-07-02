@@ -124,8 +124,8 @@ def load_thermo(filename: str = "thermo.out", directory: str = None) -> Dict[str
 
     Returns:
         Dict containing the data from thermo.out. Units are [temperature
-         -> K], [K, U -> eV], [Px, Py, Pz -> GPa], [Lx, Ly, Lz, ax, ay, az,
-         bx, by, bz, cx, cy, cz -> A]
+         -> K], [K, U -> eV], [Px, Py, Pz, Pyz, Pxz, Pxy -> GPa],
+         [Lx, Ly, Lz, ax, ay, az, bx, by, bz, cx, cy, cz -> A]
     """
     thermo_path = util.get_path(directory, filename)
     data = pd.read_csv(thermo_path, delim_whitespace=True, header=None)

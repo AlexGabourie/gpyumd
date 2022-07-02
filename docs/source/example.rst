@@ -7,5 +7,6 @@ Examples
     notebooks/Thermal Expansion
     notebooks/Density of States
     notebooks/Phonon Dispersion
-    notebooks/Thermal Transport - Ballistic
     notebooks/Thermal Transport - EMD
+    notebooks/Thermal Transport - Ballistic
+    notebooks/Thermal Transport - Diffusive
