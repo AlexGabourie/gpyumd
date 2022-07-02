@@ -14,3 +14,12 @@ img.center{display:block; margin-left:auto; margin-right:auto; text-align: cente
 .wy-side-nav-search, .wy-nav-top {
     background: #0f9200;
 }
+
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple)>dt {
+    /* Class definitions */
+    border-top: solid 3px #444444;
+    border-left: none;
+    background: #dcf5e4;
+    color: black;
+}
+
