@@ -336,6 +336,9 @@ class Run:
         output = list()
         if self.header:
             output.append(f"# {self.header}")
+        if 'velocity' in keywords:
+            keyword = keywords.pop('velocity', None)
+            output.append(keyword.get_entry())
         if 'time_step' in keywords:
             keyword = keywords.pop('time_step', None)
             output.append(keyword.get_entry())
