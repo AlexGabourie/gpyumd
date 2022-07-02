@@ -129,12 +129,19 @@ def load_thermo(filename: str = "thermo.out", directory: str = None) -> Dict[str
     """
     thermo_path = util.get_path(directory, filename)
     data = pd.read_csv(thermo_path, delim_whitespace=True, header=None)
-    labels = ['temperature', 'K', 'U', 'Px', 'Py', 'Pz']
-    # Orthogonal
-    if data.shape[1] == 9:
-        labels += ['Lx', 'Ly', 'Lz']
-    elif data.shape[1] == 15:
-        labels += ['ax', 'ay', 'az', 'bx', 'by', 'bz', 'cx', 'cy', 'cz']
+    labels = ['temperature', 'K', 'U']
+    # Format before v3.3.1
+    if data.shape[1] == 9:  # orthogonal
+        labels += ['Px', 'Py', 'Pz', 'Lx', 'Ly', 'Lz']
+    elif data.shape[1] == 15:  # triclinic
+        labels += ['Px', 'Py', 'Pz', 'ax', 'ay', 'az', 'bx', 'by', 'bz', 'cx', 'cy', 'cz']
+    # format after v3.3.1
+    elif data.shape[1] == 12:  # orthogonal
+        labels += ['Px', 'Py', 'Pz', 'Pyz', 'Pxz', 'Pxy', 'Lx', 'Ly', 'Lz']
+    elif data.shape[1] == 18:  # triclinic
+        labels += ['Px', 'Py', 'Pz', 'Pyz', 'Pxz', 'Pxy', 'ax', 'ay', 'az', 'bx', 'by', 'bz', 'cx', 'cy', 'cz']
+    else:
+        raise ValueError(f"The file {filename} is not a valid thermo.out file.")
 
     out = dict()
     for i in range(data.shape[1]):
