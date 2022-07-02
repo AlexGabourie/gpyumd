@@ -798,7 +798,8 @@ class ComputeHAC(Keyword):
 
 class ComputeHNEMD(Keyword):
 
-    def __init__(self, output_interval: int, driving_force_x: float, driving_force_y: float, driving_force_z: float):
+    def __init__(self, output_interval: int, driving_force_x: float = 0, driving_force_y: float = 0,
+                 driving_force_z: float = 0):
         """
         Calculates the thermal conductivity using the HNEMD method.
 
@@ -866,8 +867,9 @@ class ComputeGKMA(Keyword):
 
 class ComputeHNEMA(Keyword):
 
-    def __init__(self, sample_interval: int, output_interval: int, driving_force_x: float, driving_force_y: float,
-                 driving_force_z: float, first_mode: int, last_mode: int, bin_option: str, size: Union[int, float]):
+    def __init__(self, sample_interval: int, output_interval: int, first_mode: int, last_mode: int,
+                 bin_option: str, size: Union[int, float], driving_force_x: float = 0, driving_force_y: float = 0,
+                 driving_force_z: float = 0):
         """
         Computes the modal thermal conductivity using the homogeneous nonequilibrium modal analysis (HNEMA) method.
 
@@ -877,14 +879,14 @@ class ComputeHNEMA(Keyword):
             sample_interval: The sampling interval (in number of steps) used to compute the modal heat current.
             output_interval: The interval to output the modal thermal conductivity. Each modal thermal
                 conductivity output is averaged over all samples per output interval.
-            driving_force_x: The x-component of the driving force. [Angstroms^-1]
-            driving_force_y: The y-component of the driving force. [Angstroms^-1]
-            driving_force_z: The z-component of the driving force. [Angstroms^-1]
             first_mode: First mode in the eigenvector.in file to include in the calculation.
             last_mode: Last mode in the eigenvector.in file to include in the calculation.
             bin_option: Only 'bin_size' or 'f_bin_size' are accepted.
             size: If bin_option == 'bin_size', this is an integer describing how many modes per bin. If
                 bin_option == 'f_bin_size', this describes bin size in THz.
+            driving_force_x: The x-component of the driving force. [Angstroms^-1]
+            driving_force_y: The y-component of the driving force. [Angstroms^-1]
+            driving_force_z: The z-component of the driving force. [Angstroms^-1]
         """
         super().__init__('compute_hnema')
         self.sample_interval = util.cond_assign_int(sample_interval, 0, op.gt, 'sample_interval')
