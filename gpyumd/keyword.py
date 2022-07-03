@@ -672,7 +672,7 @@ class ComputeSHC(Keyword):
         """
         super().__init__('compute_shc')
         sample_interval = util.cond_assign_int(sample_interval, 1, op.ge, 'sample_interval')
-        self.sample_interval = util.cond_assign_int(sample_interval, 10, op.le, 'sample_interval')
+        self.sample_interval = util.cond_assign_int(sample_interval, 50, op.le, 'sample_interval')
         num_corr_steps = util.cond_assign_int(num_corr_steps, 100, op.ge, 'num_corr_steps')
         self.num_corr_steps = util.cond_assign_int(num_corr_steps, 1000, op.le, 'num_corr_steps')
         if not (transport_direction in ['x', 'y', 'z']):
