@@ -583,13 +583,15 @@ def load_saved_heatmode(filename: str = "heatmode.npy", directory: str = None):
     return np.load(path, allow_pickle=True).item()
 
 
-def load_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", directory: str = None) -> dict:
+def load_frequency_info(num_atoms: int, bin_f_size: float, eigfile: str = "eigenvector.out",
+                        directory: str = None) -> dict:
     """
     Gathers eigen-frequency information from the eigenvector file and sorts
     it appropriately based on the selected frequency bins (identical to
     internal GPUMD representation).
 
     Args:
+        num_atoms: The number of atoms in the structure
         bin_f_size: The frequency-based bin size (in THz)
         directory: Directory eigfile is stored
         eigfile: The filename of the eigenvector output/input file created
@@ -600,9 +602,10 @@ def load_frequency_info(bin_f_size: float, eigfile: str = "eigenvector.out", dir
          binning information. Units are [fq, fmax, fmin, bin_f_size -> THz],
          [shift, nbins, bin_count -> N/A].
     """
+    num_modes = num_atoms * 3
     eigpath = os.path.join(directory, eigfile) if directory else os.path.join(os.getcwd(), eigfile)
-    with open(eigpath, 'r') as eig_filehandle:
-        om2 = [float(x) for x in eig_filehandle.readline().split()]
+    with open(eigpath, 'rb') as eig_filehandle:
+        om2 = np.fromfile(eig_filehandle, dtype=np.float32, count=num_modes)
 
     epsilon = 1.e-6  # tolerance for float errors
     fq = np.sign(om2) * np.sqrt(abs(np.array(om2))) / (2 * np.pi)
