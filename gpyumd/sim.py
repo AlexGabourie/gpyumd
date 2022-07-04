@@ -48,6 +48,22 @@ class Simulation:
         self.atoms = copy.deepcopy(gpumd_atoms)
         self.potentials = None
 
+    def set_directory(self, run_directory: str = None, driver_directory: str = None):
+        """
+        Changes the directories of the simulation.
+
+        Args:
+            run_directory: Directory of the simulation.
+            driver_directory: Directory where the driver input file will
+             be found.
+        """
+        if run_directory:
+            util.create_directory(run_directory)
+            self.directory = run_directory
+        if driver_directory:
+            util.create_directory(driver_directory)
+            self.driver_directory = driver_directory
+
     def create_simulation(self, copy_potentials: bool = True, use_velocity: bool = False) -> None:
         """
         Generates the required files for the gpumd simulation

@@ -417,7 +417,7 @@ def load_heatmode(nbins: int,
                   save: bool = False,
                   multiprocessing: bool = False,
                   ncore: int = None,
-                  block_size: int = None,
+                  block_size: int = 65536,
                   return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
     Loads data from heatmode.out GPUMD file. Option to save as binary
@@ -488,7 +488,7 @@ def load_kappamode(nbins: int,
                    save: bool = False,
                    multiprocessing: bool = False,
                    ncore: int = None,
-                   block_size: int = None,
+                   block_size: int = 65536,
                    return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
     """
     Loads data from kappamode.out GPUMD file. Option to save as binary file
