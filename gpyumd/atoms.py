@@ -386,7 +386,8 @@ class GpumdAtoms(Atoms):
         util.check_range(rep, 2 ** 64)
         supercell = GpumdAtoms(Atoms.repeat(self, rep))
         supercell.unitcell = self.unitcell
-        supercell.basis = self.basis * np.prod(rep, dtype=int)
+        if self.basis is not None:
+            supercell.basis = self.basis * np.prod(rep, dtype=int)
         return supercell
 
     def write_kpoints(self, path: str = "G", npoints: int = 1,
