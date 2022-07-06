@@ -9,8 +9,6 @@ __email__ = "agabourie47@gmail.com"
 
 
 def calc_gkma_kappa(data: dict,
-                    nbins: int,
-                    nsamples: int,
                     dt: float,
                     sample_interval: int,
                     temperature: float = 300,
@@ -19,17 +17,13 @@ def calc_gkma_kappa(data: dict,
                     directions: str = "xyz",
                     outputfile: str = "heatmode.npy",
                     save: bool = False,
-                    directory: str = None,
-                    return_data: bool = True) -> Union[None, Dict[str, np.ndarray]]:
+                    directory: str = None) -> Union[None, Dict[str, np.ndarray]]:
     """
     Calculate the Green-Kubo thermal conductivity from modal heat current
     data from 'load_heatmode'
 
     Args:
         data: Dictionary with heat currents loaded by 'load_heatmode'
-        nbins: Number of bins used during the GPUMD simulation
-        nsamples: Number of times heat flux was sampled with GKMA
-         during GPUMD simulation
         dt: Time step during data collection in fs
         sample_interval: Number of time steps per sample of modal heat
          flux
@@ -45,17 +39,10 @@ def calc_gkma_kappa(data: dict,
         save: Toggle saving data to binary dictionary. Loading from
          save file is much faster and recommended
         directory: Name of directory storing the input file to read
-        return_data: Toggle returning the loaded modal heat flux data.
-         If this is False, the user should ensure that save is True
-
-    Returns:
-        Input data dict but with correlation, thermal conductivity, and
-         lag time data included. Units are [tau -> ns], [kmxi, kmxo, kmyi,
-         kmyo, kmz -> W(m^-1)(K^-1)(*x*^-1)], [jmxijx, jmxojx, jmyijy,
-         jmyojy, jmzjz -> (eV^3)(amu^(-1/2)(*x*^-1)]. Here *x* is the size
-         of the bins in THz. For example, if there are 4 bins per THz,
-         *x* = 0.25 THz.
     """
+    nbins = data['nbins']
+    nsamples = data['nsamples']
+
     def kappa_scaling() -> float:  # Keep to understand unit conversion
         # Units:     eV^3/amu -> Jm^2/s^2*eV         fs -> s       K/(eV*Ang^3) -> K/(eV*m^3) w/ Boltzmann
         scaling = (1.602176634e-19 * 9.651599e7) * (1. / 1.e15) * (1.e30 / 8.617333262145e-5)
@@ -134,8 +121,6 @@ def calc_gkma_kappa(data: dict,
 
     if save:
         np.save(out_path, data)
-
-    return data if return_data else None
 
 
 def calc_spectral_kappa(shc: dict, driving_force: float, temperature: float, volume: float) -> None:

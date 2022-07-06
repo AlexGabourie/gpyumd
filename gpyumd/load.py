@@ -315,7 +315,7 @@ def load_hac(num_corr_points: Union[int, List[int]], output_interval: Union[int,
          [kxi, kxo, kyi, kyo, kz -> W(m^-1)(K^-1)], [jxijx, jxojx, jyijy,
          jyojy, jzjz -> (eV^3)(amu^-1)]
     """
-    num_corr_points = util.check_list(num_corr_points, varname='nc', dtype=int)
+    num_corr_points = util.check_list(num_corr_points, varname='num_corr_points', dtype=int)
     output_interval = util.check_list(output_interval, varname='output_interval', dtype=int)
     if not len(num_corr_points) == len(output_interval):
         raise ValueError('nc and output_interval must be the same length.')

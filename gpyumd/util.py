@@ -125,10 +125,10 @@ def check_list(data: List[any], varname: str, dtype: type) -> List[any]:
     if isinstance(data, list):
         for elem in data:
             if not isinstance(elem, dtype):
-                raise ValueError('All entries for {} must be {}.'.format(str(varname), str(dtype)))
+                raise ValueError(f'All entries for {varname} must be {dtype}.')
         return data
 
-    raise ValueError('{} is not the correct type.'.format(str(varname)))
+    raise ValueError(f'{varname} is not type {dtype}.')
 
 
 def check_range(npoints: List[int], maxpoints: int) -> None:
