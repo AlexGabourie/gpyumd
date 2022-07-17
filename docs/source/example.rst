@@ -10,3 +10,4 @@ Examples
     notebooks/Thermal Transport - EMD
     notebooks/Thermal Transport - Ballistic
     notebooks/Thermal Transport - Diffusive
+    notebooks/Thermal Transport - Modal Analysis
