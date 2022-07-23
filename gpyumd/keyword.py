@@ -1048,6 +1048,141 @@ class ComputePhonon(Keyword):
         return f"{self.__class__.__name__}(cutoff={self.cutoff}, displacement={self.displacement})"
 
 
+class ChangeBox(Keyword):
+
+    def __init__(self, deformation: str, delta: float = None,
+                 delta_xx: float = None, delta_yy: float = None, delta_zz: float = None,
+                 epsilon_yz: float = None, epsilon_xz: float = None, epsilon_xy: float = None):
+        """
+        Keyword used to change the simulation box. Parameter names
+        reflect their position in the deformation matrix, which is
+        nicely shown in the linked GPUMD documentation.
+
+        https://gpumd.zheyongfan.org/index.php/The_change_box_keyword
+
+        Args:
+            deformation: Options are 'scale', 'stretch', and 'any'.
+             They require 1, 3, and 6 parameters defined, respectively.
+             The box must be triclinic for the 'any' option.
+            delta: Only value needed to 'scale'. Used along diagonal of
+             deformation matrix. Units of Angstrom.
+            delta_xx: Needed for 'scale' & 'any'. Used in xx part of
+             diagonal in deformation matrix. Units of Angstrom.
+            delta_yy: Needed for 'scale' & 'any'. Used in yy part of
+             diagonal in deformation matrix. Units of Angstrom.
+            delta_zz: Needed for 'scale' & 'any'. Used in zz part of
+             diagonal in deformation matrix. Units of Angstrom.
+            epsilon_yz: Needed for 'any'. (Dimensionless strain)
+            epsilon_xz: Needed for 'any'. (Dimensionless strain)
+            epsilon_xy: Needed for 'any'. (Dimensionless strain)
+        """
+        super().__init__('change_box', take_immediate_action=True)
+
+        if deformation in ['scale', 'stretch', 'any']:
+            self.deformation = deformation
+        else:
+            raise ValueError("The 'deformation' parameter must be either 'scale', 'stretch', or 'any'.")
+
+        if deformation == 'scale':
+            if delta is None:
+                raise ValueError("The 'delta' parameter must be defined for the 'scale' deformation.")
+
+            self.delta = util.assign_number(delta, 'delta')
+            self._set_args([self.delta])
+
+        elif deformation == 'stretch':
+            for name, value in zip(['delta_xx', 'delta_yy', 'delta_zz'], [delta_xx, delta_yy, delta_zz]):
+                if value is None:
+                    raise ValueError(f"The {name} parameter must be defined for the 'stretch' deformation.")
+
+            self.delta_xx = util.assign_number(delta_xx, 'delta_xx')
+            self.delta_yy = util.assign_number(delta_yy, 'delta_yy')
+            self.delta_zz = util.assign_number(delta_zz, 'delta_zz')
+            self._set_args([self.delta_xx, self.delta_yy, self.delta_zz])
+
+        elif deformation == 'any':
+            for name, value in zip(['delta_xx', 'delta_yy', 'delta_zz', 'epsilon_yz', 'epsilon_xz', 'epsilon_xy'],
+                                   [delta_xx, delta_yy, delta_zz, epsilon_yz, epsilon_xz, epsilon_xy]):
+                if value is None:
+                    raise ValueError(f"The {name} parameter must be defined for the 'stretch' deformation.")
+
+            self.delta_xx = util.assign_number(delta_xx, 'delta_xx')
+            self.delta_yy = util.assign_number(delta_yy, 'delta_yy')
+            self.delta_zz = util.assign_number(delta_zz, 'delta_zz')
+            self.epsilon_yz = util.assign_number(epsilon_yz, 'epsilon_yz')
+            self.epsilon_xz = util.assign_number(epsilon_xz, 'epsilon_xz')
+            self.epsilon_xy = util.assign_number(epsilon_xy, 'epsilon_xy')
+            self._set_args([self.delta_xx, self.delta_yy, self.delta_zz,
+                            self.epsilon_yz, self.epsilon_xz, self.epsilon_xy])
+
+    def __repr__(self):
+        repr_str = f"{self.__class__.__name__}"
+        if self.deformation == 'scale':
+            return repr_str + f"(delta={self.delta})"
+        elif self.deformation == 'stretch':
+            return repr_str + f"(delta_xx={self.delta_xx}, delta_yy={self.delta_yy}, delta_zz={self.delta_zz})"
+        elif self.deformation == 'any':
+            return repr_str + f"(delta_xx={self.delta_xx}, delta_yy={self.delta_yy}, delta_zz={self.delta_zz}" \
+                        + f"epsilon_yz={self.epsilon_yz}, epsilon_xz={self.epsilon_xz}, epsilon_xy={self.epsilon_xy})"
+
+    @classmethod
+    def scale(cls, delta):
+        """
+        Create 'change_box' keyword with one parameter, delta, that is
+        used across each diagonal element of the deformation matrix.
+
+        Args:
+            delta: Change along diagonal of deformation matrix. Units
+             of Angstrom.
+
+        Returns:
+            ChangeBox keyword
+        """
+        return cls(deformation='scale', delta=delta)
+
+    @classmethod
+    def stretch(cls, delta_xx, delta_yy, delta_zz):
+        """
+        Create 'change_box' keyword with three parameters that define
+         the changes along the diagonal of the deformation matrix.
+
+        Args:
+            delta_xx: Change in the xx element of deformation matrix.
+             Units of Angstrom.
+            delta_yy: Change in the yy element of deformation matrix.
+             Units of Angstrom.
+            delta_zz: Change in the yy element of deformation matrix.
+             Units of Angstrom.
+
+        Returns:
+            ChangeBox keyword
+        """
+        return cls(deformation='stretch', delta_xx=delta_xx, delta_yy=delta_yy, delta_zz=delta_zz)
+
+    @classmethod
+    def general(cls, delta_xx, delta_yy, delta_zz, epsilon_yz, epsilon_xz, epsilon_xy):
+        """
+        Create 'change_box' keyword with six parameters that define
+         the changes in the deformation matrix.
+
+        Args:
+            delta_xx: Change in the xx element of deformation matrix.
+             Units of Angstrom.
+            delta_yy: Change in the yy element of deformation matrix.
+             Units of Angstrom.
+            delta_zz: Change in the yy element of deformation matrix.
+             Units of Angstrom.
+            epsilon_yz: Dimensionless strain
+            epsilon_xz: Dimensionless strain
+            epsilon_xy: Dimensionless strain
+
+        Returns:
+            ChangeBox keyword
+        """
+        return cls(deformation='any', delta_xx=delta_xx, delta_yy=delta_yy, delta_zz=delta_zz,
+                   epsilon_yz=epsilon_yz, epsilon_xz=epsilon_xz, epsilon_xy=epsilon_xy)
+
+
 # TODO if NEP, need to check that the list of symbols matches that in the first line of the NEP potential file
 class Potential(Keyword):
 
