@@ -1058,30 +1058,33 @@ class ChangeBox(Keyword):
         reflect their position in the deformation matrix, which is
         nicely shown in the linked GPUMD documentation.
 
+        Best to instantiate through class methods: scale(), stretch()
+        and general().
+
         https://gpumd.zheyongfan.org/index.php/The_change_box_keyword
 
         Args:
-            deformation: Options are 'scale', 'stretch', and 'any'.
+            deformation: Options are 'scale', 'stretch', and 'general'.
              They require 1, 3, and 6 parameters defined, respectively.
-             The box must be triclinic for the 'any' option.
+             The box must be triclinic for the 'general' option.
             delta: Only value needed to 'scale'. Used along diagonal of
              deformation matrix. Units of Angstrom.
-            delta_xx: Needed for 'scale' & 'any'. Used in xx part of
+            delta_xx: Needed for 'scale' & 'general'. Used in xx part of
              diagonal in deformation matrix. Units of Angstrom.
-            delta_yy: Needed for 'scale' & 'any'. Used in yy part of
+            delta_yy: Needed for 'scale' & 'general'. Used in yy part of
              diagonal in deformation matrix. Units of Angstrom.
-            delta_zz: Needed for 'scale' & 'any'. Used in zz part of
+            delta_zz: Needed for 'scale' & 'general'. Used in zz part of
              diagonal in deformation matrix. Units of Angstrom.
-            epsilon_yz: Needed for 'any'. (Dimensionless strain)
-            epsilon_xz: Needed for 'any'. (Dimensionless strain)
-            epsilon_xy: Needed for 'any'. (Dimensionless strain)
+            epsilon_yz: Needed for 'general'. (Dimensionless strain)
+            epsilon_xz: Needed for 'general'. (Dimensionless strain)
+            epsilon_xy: Needed for 'general'. (Dimensionless strain)
         """
         super().__init__('change_box', take_immediate_action=True)
 
-        if deformation in ['scale', 'stretch', 'any']:
+        if deformation in ['scale', 'stretch', 'general']:
             self.deformation = deformation
         else:
-            raise ValueError("The 'deformation' parameter must be either 'scale', 'stretch', or 'any'.")
+            raise ValueError("The 'deformation' parameter must be either 'scale', 'stretch', or 'general'.")
 
         if deformation == 'scale':
             if delta is None:
@@ -1100,7 +1103,7 @@ class ChangeBox(Keyword):
             self.delta_zz = util.assign_number(delta_zz, 'delta_zz')
             self._set_args([self.delta_xx, self.delta_yy, self.delta_zz])
 
-        elif deformation == 'any':
+        elif deformation == 'general':
             for name, value in zip(['delta_xx', 'delta_yy', 'delta_zz', 'epsilon_yz', 'epsilon_xz', 'epsilon_xy'],
                                    [delta_xx, delta_yy, delta_zz, epsilon_yz, epsilon_xz, epsilon_xy]):
                 if value is None:
@@ -1121,7 +1124,7 @@ class ChangeBox(Keyword):
             return repr_str + f"(delta={self.delta})"
         elif self.deformation == 'stretch':
             return repr_str + f"(delta_xx={self.delta_xx}, delta_yy={self.delta_yy}, delta_zz={self.delta_zz})"
-        elif self.deformation == 'any':
+        elif self.deformation == 'general':
             return repr_str + f"(delta_xx={self.delta_xx}, delta_yy={self.delta_yy}, delta_zz={self.delta_zz}" \
                         + f"epsilon_yz={self.epsilon_yz}, epsilon_xz={self.epsilon_xz}, epsilon_xy={self.epsilon_xy})"
 
@@ -1130,6 +1133,8 @@ class ChangeBox(Keyword):
         """
         Create 'change_box' keyword with one parameter, delta, that is
         used across each diagonal element of the deformation matrix.
+
+        https://gpumd.zheyongfan.org/index.php/The_change_box_keyword
 
         Args:
             delta: Change along diagonal of deformation matrix. Units
@@ -1144,7 +1149,9 @@ class ChangeBox(Keyword):
     def stretch(cls, delta_xx, delta_yy, delta_zz):
         """
         Create 'change_box' keyword with three parameters that define
-         the changes along the diagonal of the deformation matrix.
+        the changes along the diagonal of the deformation matrix.
+
+        https://gpumd.zheyongfan.org/index.php/The_change_box_keyword
 
         Args:
             delta_xx: Change in the xx element of deformation matrix.
@@ -1163,7 +1170,9 @@ class ChangeBox(Keyword):
     def general(cls, delta_xx, delta_yy, delta_zz, epsilon_yz, epsilon_xz, epsilon_xy):
         """
         Create 'change_box' keyword with six parameters that define
-         the changes in the deformation matrix.
+        the changes in the deformation matrix.
+
+        https://gpumd.zheyongfan.org/index.php/The_change_box_keyword
 
         Args:
             delta_xx: Change in the xx element of deformation matrix.
@@ -1179,7 +1188,7 @@ class ChangeBox(Keyword):
         Returns:
             ChangeBox keyword
         """
-        return cls(deformation='any', delta_xx=delta_xx, delta_yy=delta_yy, delta_zz=delta_zz,
+        return cls(deformation='general', delta_xx=delta_xx, delta_yy=delta_yy, delta_zz=delta_zz,
                    epsilon_yz=epsilon_yz, epsilon_xz=epsilon_xz, epsilon_xy=epsilon_xy)
 
 
