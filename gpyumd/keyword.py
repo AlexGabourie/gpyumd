@@ -222,10 +222,10 @@ class EnsembleNPT(Keyword):
     default_elastic = 160/3  # GPa; Default elastic constant used in older GPUMD versions
 
     def __init__(self, ensemble_method: str, condition: str, initial_temperature: float, final_temperature: float,
-                thermostat_coupling: float, barostat_coupling: float, p_hydro: float = None,
-                c_hydro: float = None, p_xx: float = None, p_yy: float = None, p_zz: float = None, p_xy: float = None,
-                p_xz: float = None, p_yz: float = None, c_xx: float = None, c_yy: float = None, c_zz: float = None,
-                c_xy: float = None, c_xz: float = None, c_yz: float = None, voigt: bool = False):
+                 thermostat_coupling: float, barostat_coupling: float, p_hydro: float = None,
+                 c_hydro: float = None, p_xx: float = None, p_yy: float = None, p_zz: float = None, p_xy: float = None,
+                 p_xz: float = None, p_yz: float = None, c_xx: float = None, c_yy: float = None, c_zz: float = None,
+                 c_xy: float = None, c_xz: float = None, c_yz: float = None, voigt: bool = False):
         """
         Sets the ensemble to NPT. Use of the class methods isotropic(),
         orthogonal(), and triclinic() recommended for instantiation.
@@ -287,6 +287,7 @@ class EnsembleNPT(Keyword):
         self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
         self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
         self.barostat_coupling = util.cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
+        self.voigt = util.assign_bool(voigt, 'voigt')
         args = [self.ensemble_method, self.initial_temperature, self.final_temperature, self.thermostat_coupling]
 
         if self.condition == 'isotropic':
@@ -333,11 +334,29 @@ class EnsembleNPT(Keyword):
 
             self._set_args(args)
 
-    # TODO add __repr__ function
+    def __repr__(self):
+        repr_str = f"{self.__class__.__name__}(condition={self.condition}, " \
+                   f"initial_temperature={self.initial_temperature}, final_temperature={self.final_temperature}, " \
+                   f"thermostat_coupling={self.thermostat_coupling}, "
+        if self.condition == 'isotropic':
+            return repr_str + f"\n            " \
+                              f"barostat_coupling={self.barostat_coupling}, p_hydro={self.p_hydro}, " \
+                              f"c_hydro={self.c_hydro})"
+        elif self.condition == 'orthogonal':
+            return repr_str + f"\n            " \
+                              f"barostat_coupling={self.barostat_coupling}, p_xx={self.p_xx}, p_yy={self.p_yy}, " \
+                              f"p_zz={self.p_zz}, c_xx={self.c_xx}, c_yy={self.c_yy}, c_zz={self.c_zz})"
+        elif self.condition == 'triclinic':
+            return repr_str + f"\n            " \
+                              f"barostat_coupling={self.barostat_coupling}, p_xx={self.p_xx}, p_yy={self.p_yy}, " \
+                              f"p_zz={self.p_zz}, p_xy={self.p_xy}, p_xz={self.p_xz}, p_yz={self.p_yz}, " \
+                              f"\n            " \
+                              f"c_xx={self.c_xx}, c_yy={self.c_yy}, c_zz={self.c_zz}, c_xz={self.c_xz}, " \
+                              f"c_xz={self.c_xz}, c_yz={self.c_yz}, voigt={self.voigt})"
 
     @classmethod
     def isotropic(cls, ensemble_method: str, initial_temperature: float, final_temperature: float,
-                thermostat_coupling: float, barostat_coupling: float, p_hydro: float, c_hydro: float):
+                  thermostat_coupling: float, barostat_coupling: float, p_hydro: float, c_hydro: float):
         """
         Sets the ensemble to NPT with isotropic conditions.
 
@@ -397,9 +416,9 @@ class EnsembleNPT(Keyword):
 
     @classmethod
     def triclinic(cls, ensemble_method: str, initial_temperature: float, final_temperature: float,
-                thermostat_coupling: float, barostat_coupling: float,
-                p_xx: float, p_yy: float, p_zz: float, p_xy: float, p_xz: float, p_yz: float,
-                c_xx: float, c_yy: float, c_zz: float, c_xy: float, c_xz: float, c_yz: float, voigt: bool = False):
+                  thermostat_coupling: float, barostat_coupling: float,
+                  p_xx: float, p_yy: float, p_zz: float, p_xy: float, p_xz: float, p_yz: float,
+                  c_xx: float, c_yy: float, c_zz: float, c_xy: float, c_xz: float, c_yz: float, voigt: bool = False):
         """
         Sets the ensemble to NPT with conditions for a triclinic box.
 
