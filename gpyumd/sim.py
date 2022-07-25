@@ -5,7 +5,7 @@ import shutil
 from typing import List
 
 from gpyumd.atoms import GpumdAtoms
-from gpyumd.keyword import Ensemble, Keyword, RunKeyword, Potential
+from gpyumd.keyword import EnsembleHeat, Keyword, RunKeyword, Potential, EnsembleNPT, EnsembleNVT
 import gpyumd.util as util
 
 __author__ = "Alexander Gabourie"
@@ -453,32 +453,28 @@ class Run:
             if 'ensemble' in self.keywords.keys() and not final_check:
                 print(f"Warning: Previous 'ensemble' keyword will be overwritten for '{self.name}' run.")
 
-            if not keyword.ensemble_type == 'nve' and not keyword.ensemble.parameters_set:
-                raise ValueError(f"Cannot add an ensemble before its parameters are set. "
-                                 f"See 'set_parameters' function.")
-
-            if keyword.ensemble_type == 'heat':
+            if isinstance(keyword, EnsembleHeat):
                 if self.atoms.num_group_methods == 0:
                     raise ValueError(f"At least one grouping method is required for the {keyword.keyword} "
                                      f"{keyword.ensemble_method} keyword.")
 
-                if self.atoms.group_methods[0].num_groups <= keyword.ensemble.source_group_id or \
-                        self.atoms.group_methods[0].num_groups <= keyword.ensemble.sink_group_id:
+                if self.atoms.group_methods[0].num_groups <= keyword.source_group_id or \
+                        self.atoms.group_methods[0].num_groups <= keyword.sink_group_id:
                     raise ValueError(f"The source or sink group is too large for grouping method 0.")
 
-            if keyword.ensemble_type == 'npt':
-                if keyword.ensemble.condition == 'isotropic':
+            if isinstance(keyword, EnsembleNPT):
+                if keyword.condition == 'isotropic':
                     if self.atoms.triclinic:
                         raise ValueError("Cannot use 'isotropic' pressure with triclinic atoms.")
                     if any([not bc for bc in self.atoms.get_pbc()]):
                         raise ValueError("Cannot use isotropic pressure with non-periodic boundary in any direction.")
 
-                if keyword.ensemble.condition == 'orthogonal' and self.atoms.triclinic:
-                    raise ValueError("Cannot use triclinic atoms cel with the orthogonal npt conditions.")
+                if keyword.condition == 'orthogonal' and self.atoms.triclinic:
+                    raise ValueError("Cannot use triclinic atoms cell with the orthogonal NPT conditions.")
 
-                if keyword.ensemble.condition == 'triclinic':
+                if keyword.condition == 'triclinic':
                     if not self.atoms.triclinic:
-                        raise ValueError("Atoms must have a triclinic cell to use the triclinic npt parameters.")
+                        raise ValueError("Atoms must have a triclinic cell to use the triclinic NPT parameters.")
                     if any([not bc for bc in self.atoms.get_pbc()]):
                         raise ValueError("Cannot use isotropic pressure with non-periodic boundary in any direction.")
 
@@ -496,8 +492,7 @@ class Run:
                 ensemble = self.keywords['ensemble']
                 if 'lan' in ensemble.ensemble_method:
                     raise ValueError("Langevin thermostat not allowed for the 'compute_hnemd' keyword.")
-                if not (isinstance(type(ensemble.ensemble), type(Ensemble.NPT)) or
-                        isinstance(type(ensemble.ensemble), type(Ensemble.NVT()))):
+                if not (isinstance(ensemble, EnsembleNPT) or isinstance(ensemble, EnsembleNVT)):
                     raise ValueError(f"An NVT or NPT ensemble is needed for the {keyword.keyword} keyword.")
 
             if keyword.keyword == 'compute_dos':
