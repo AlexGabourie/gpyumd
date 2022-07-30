@@ -1,7 +1,6 @@
 import operator as op
-import numbers
 import os
-from typing import List, Union, Dict
+from typing import List, Union
 import gpyumd.util as util
 
 
@@ -135,48 +134,48 @@ class EnsembleNVE(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
         """
         super().__init__('ensemble')
-        self.ensemble_method = 'nve'
-        self._set_args([self.ensemble_method])
+        self.method = 'nve'
+        self._set_args([self.method])
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(ensemble={self.ensemble_method})"
+        return f"{self.__class__.__name__}(ensemble={self.method})"
 
 
 class EnsembleNVT(Keyword):
 
-    def __int__(self, ensemble_method: str, initial_temperature: float, final_temperature: float,
-                thermostat_coupling: float):
+    def __init__(self, method: str, initial_temperature: float, final_temperature: float,
+                 thermostat_coupling: float):
         """
         Sets the ensemble to be NVT.
 
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'nvt_ber', 'nvt_nhc',
+            method: Must be one of: 'nvt_ber', 'nvt_nhc',
              'nvt_bdp', 'nvt_lan'
             initial_temperature: Initial temperature of run. [K]
             final_temperature: Final temperature of run. [K]
             thermostat_coupling: Coupling strength to the thermostat.
         """
         super().__init__('ensemble')
-        if not (ensemble_method in ['nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan']):
-            raise ValueError(f"{ensemble_method} is not an accepted NVT ensemble method.")
-        self.ensemble_method = ensemble_method
+        if not (method in ['nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan']):
+            raise ValueError(f"{method} is not an accepted NVT ensemble method.")
+        self.method = method
         self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
         self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
         self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
-        self._set_args([self.ensemble_method, self.initial_temperature, self.final_temperature,
+        self._set_args([self.method, self.initial_temperature, self.final_temperature,
                         self.thermostat_coupling])
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(ensemble={self.ensemble_method}, " \
+        return f"{self.__class__.__name__}(ensemble={self.method}, " \
                f"initial_temperature={self.initial_temperature}, final_temperature={self.final_temperature}, " \
                f"thermostat_coupling={self.thermostat_coupling})"
 
 
 class EnsembleHeat(Keyword):
 
-    def __init__(self, ensemble_method: str, temperature: float, thermostat_coupling: float, temperature_delta: float,
+    def __init__(self, method: str, temperature: float, thermostat_coupling: float, temperature_delta: float,
                  source_group_id: int, sink_group_id: int):
         """
         Sets the ensemble to use heaters.
@@ -184,7 +183,7 @@ class EnsembleHeat(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'heat_nhc', 'heat_bdp',
+            method: Must be one of: 'heat_nhc', 'heat_bdp',
              'heat_lan'
             temperature: Base temperature of the simulation. [K]
             thermostat_coupling: Coupling strength to the thermostat.
@@ -196,9 +195,9 @@ class EnsembleHeat(Keyword):
              heat. (Note: -temperature_delta)
         """
         super().__init__('ensemble')
-        if not (ensemble_method in ['heat_nhc', 'heat_bdp', 'heat_lan']):
-            raise ValueError(f"{ensemble_method} is not an accepted heating ensemble method.")
-        self.ensemble_method = ensemble_method
+        if not (method in ['heat_nhc', 'heat_bdp', 'heat_lan']):
+            raise ValueError(f"{method} is not an accepted heating ensemble method.")
+        self.method = method
         self.temperature = util.cond_assign(temperature, 0, op.gt, 'temperature')
         self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
         if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
@@ -209,11 +208,11 @@ class EnsembleHeat(Keyword):
         if self.source_group_id == self.sink_group_id:
             raise ValueError(f"The source and sink group cannot be the same.")
         self.parameters_set = True
-        self._set_args([self.ensemble_method, self.temperature, self.thermostat_coupling, self.temperature_delta,
+        self._set_args([self.method, self.temperature, self.thermostat_coupling, self.temperature_delta,
                         self.source_group_id, self.sink_group_id])
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(ensemble={self.ensemble_method}, temperature={self.temperature}, " \
+        return f"{self.__class__.__name__}(ensemble={self.method}, temperature={self.temperature}, " \
                f"thermostat_coupling={self.thermostat_coupling}, temperature_delta={self.temperature_delta}, " \
                f"source_group_id={self.source_group_id}, sink_group_id={self.sink_group_id})"
 
@@ -221,7 +220,7 @@ class EnsembleHeat(Keyword):
 class EnsembleNPT(Keyword):
     default_elastic = 160/3  # GPa; Default elastic constant used in older GPUMD versions
 
-    def __init__(self, ensemble_method: str, condition: str, initial_temperature: float, final_temperature: float,
+    def __init__(self, method: str, condition: str, initial_temperature: float, final_temperature: float,
                  thermostat_coupling: float, barostat_coupling: float, p_hydro: float = None,
                  c_hydro: float = None, p_xx: float = None, p_yy: float = None, p_zz: float = None, p_xy: float = None,
                  p_xz: float = None, p_yz: float = None, c_xx: float = None, c_yy: float = None, c_zz: float = None,
@@ -236,7 +235,7 @@ class EnsembleNPT(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'npt_ber', 'npt_scr'
+            method: Must be one of: 'npt_ber', 'npt_scr'
             condition: One of 'isotropic', 'orthogonal', 'triclinic'.
              Determines which pressures and elastic tensors are needed.
             initial_temperature: Initial temperature of run. [K]
@@ -274,9 +273,9 @@ class EnsembleNPT(Keyword):
                 raise ValueError(f"The {param_name} parameter must be defined for the '{self.condition}' condition.")
 
         super().__init__('ensemble')
-        if not (ensemble_method in ['npt_ber', 'npt_scr']):
-            raise ValueError(f"{ensemble_method} is not an accepted NPT ensemble method.")
-        self.ensemble_method = ensemble_method
+        if not (method in ['npt_ber', 'npt_scr']):
+            raise ValueError(f"{method} is not an accepted NPT ensemble method.")
+        self.method = method
 
         if condition in ['isotropic', 'orthogonal', 'triclinic']:
             self.condition = condition
@@ -288,7 +287,7 @@ class EnsembleNPT(Keyword):
         self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
         self.barostat_coupling = util.cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
         self.voigt = util.assign_bool(voigt, 'voigt')
-        args = [self.ensemble_method, self.initial_temperature, self.final_temperature, self.thermostat_coupling]
+        args = [self.method, self.initial_temperature, self.final_temperature, self.thermostat_coupling]
 
         if self.condition == 'isotropic':
             for name, value in zip(['p_hydro, c_hydro'], [p_hydro, c_hydro]):
@@ -355,7 +354,7 @@ class EnsembleNPT(Keyword):
                               f"c_xz={self.c_xz}, c_yz={self.c_yz}, voigt={self.voigt})"
 
     @classmethod
-    def isotropic(cls, ensemble_method: str, initial_temperature: float, final_temperature: float,
+    def isotropic(cls, method: str, initial_temperature: float, final_temperature: float,
                   thermostat_coupling: float, barostat_coupling: float, p_hydro: float, c_hydro: float):
         """
         Sets the ensemble to NPT with isotropic conditions.
@@ -363,7 +362,7 @@ class EnsembleNPT(Keyword):
          https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'npt_ber', 'npt_scr'
+            method: Must be one of: 'npt_ber', 'npt_scr'
             initial_temperature: Initial temperature of run. [K]
             final_temperature: Final temperature of run. [K]
             thermostat_coupling: Coupling strength to the thermostat.
@@ -374,12 +373,12 @@ class EnsembleNPT(Keyword):
         Returns:
             EnsembleNPT Keyword
         """
-        return cls(ensemble_method=ensemble_method, condition='isotropic', initial_temperature=initial_temperature,
+        return cls(method=method, condition='isotropic', initial_temperature=initial_temperature,
                    final_temperature=final_temperature, thermostat_coupling=thermostat_coupling,
                    barostat_coupling=barostat_coupling, p_hydro=p_hydro, c_hydro=c_hydro)
 
     @classmethod
-    def orthogonal(cls, ensemble_method: str, initial_temperature: float, final_temperature: float,
+    def orthogonal(cls, method: str, initial_temperature: float, final_temperature: float,
                    thermostat_coupling: float, barostat_coupling: float, p_xx: float, p_yy: float, p_zz: float,
                    c_xx: float, c_yy: float, c_zz: float):
         """
@@ -388,7 +387,7 @@ class EnsembleNPT(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'npt_ber', 'npt_scr'
+            method: Must be one of: 'npt_ber', 'npt_scr'
             initial_temperature: Initial temperature of run. [K]
             final_temperature: Final temperature of run. [K]
             thermostat_coupling: Coupling strength to the thermostat.
@@ -409,13 +408,13 @@ class EnsembleNPT(Keyword):
         Returns:
             EnsembleNPT Keyword
         """
-        return cls(ensemble_method=ensemble_method, condition='orthogonal', initial_temperature=initial_temperature,
+        return cls(method=method, condition='orthogonal', initial_temperature=initial_temperature,
                    final_temperature=final_temperature, thermostat_coupling=thermostat_coupling,
                    barostat_coupling=barostat_coupling, p_xx=p_xx, p_yy=p_yy, p_zz=p_zz,
                    c_xx=c_xx, c_yy=c_yy, c_zz=c_zz)
 
     @classmethod
-    def triclinic(cls, ensemble_method: str, initial_temperature: float, final_temperature: float,
+    def triclinic(cls, method: str, initial_temperature: float, final_temperature: float,
                   thermostat_coupling: float, barostat_coupling: float,
                   p_xx: float, p_yy: float, p_zz: float, p_xy: float, p_xz: float, p_yz: float,
                   c_xx: float, c_yy: float, c_zz: float, c_xy: float, c_xz: float, c_yz: float, voigt: bool = False):
@@ -425,7 +424,7 @@ class EnsembleNPT(Keyword):
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'npt_ber', 'npt_scr'
+            method: Must be one of: 'npt_ber', 'npt_scr'
             initial_temperature: Initial temperature of run. [K]
             final_temperature: Final temperature of run. [K]
             thermostat_coupling: Coupling strength to the thermostat.
@@ -457,12 +456,11 @@ class EnsembleNPT(Keyword):
         Returns:
             EnsembleNPT Keyword
         """
-        return cls(ensemble_method=ensemble_method, condition='triclinic', initial_temperature=initial_temperature,
+        return cls(method=method, condition='triclinic', initial_temperature=initial_temperature,
                    final_temperature=final_temperature, thermostat_coupling=thermostat_coupling,
                    barostat_coupling=barostat_coupling,
                    p_xx=p_xx, p_yy=p_yy, p_zz=p_zz, p_xy=p_xy, p_xz=p_xz, p_yz=p_yz,
                    c_xx=c_xx, c_yy=c_yy, c_zz=c_zz, c_xy=c_xy, c_xz=c_xz, c_yz=c_yz, voigt=voigt)
-
 
 
 class NeighborOff(Keyword):

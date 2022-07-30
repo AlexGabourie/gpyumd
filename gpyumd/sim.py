@@ -456,7 +456,7 @@ class Run:
             if isinstance(keyword, EnsembleHeat):
                 if self.atoms.num_group_methods == 0:
                     raise ValueError(f"At least one grouping method is required for the {keyword.keyword} "
-                                     f"{keyword.ensemble_method} keyword.")
+                                     f"{keyword.method} keyword.")
 
                 if self.atoms.group_methods[0].num_groups <= keyword.source_group_id or \
                         self.atoms.group_methods[0].num_groups <= keyword.sink_group_id:
@@ -490,7 +490,7 @@ class Run:
                     raise ValueError(f"The {keyword.keyword} keyword requires an NVT or NPT ensemble be defined.")
 
                 ensemble = self.keywords['ensemble']
-                if 'lan' in ensemble.ensemble_method:
+                if 'lan' in ensemble.method:
                     raise ValueError("Langevin thermostat not allowed for the 'compute_hnemd' keyword.")
                 if not (isinstance(ensemble, EnsembleNPT) or isinstance(ensemble, EnsembleNVT)):
                     raise ValueError(f"An NVT or NPT ensemble is needed for the {keyword.keyword} keyword.")
