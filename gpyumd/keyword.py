@@ -1,7 +1,6 @@
 import operator as op
-import numbers
 import os
-from typing import List, Union, Dict
+from typing import List, Union
 import gpyumd.util as util
 
 
@@ -126,107 +125,66 @@ class TimeStep(Keyword):
                f"max_distance_per_step={self.max_distance_per_step})"
 
 
-class Ensemble(Keyword):
+class EnsembleNVE(Keyword):
 
-    def __init__(self, ensemble_method: str):
+    def __init__(self):
         """
-        Manages the "ensemble" keyword.
+        Sets the ensemble to be NVE.
+
+        https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
+        """
+        super().__init__('ensemble')
+        self.method = 'nve'
+        self._set_args([self.method])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(ensemble={self.method})"
+
+
+class EnsembleNVT(Keyword):
+
+    def __init__(self, method: str, initial_temperature: float, final_temperature: float,
+                 thermostat_coupling: float):
+        """
+        Sets the ensemble to be NVT.
 
         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            ensemble_method: Must be one of: 'nve', 'nvt_ber', 'nvt_nhc',
-             'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr', 'heat_nhc',
-             'heat_bdp', 'heat_lan'
+            method: Must be one of: 'nvt_ber', 'nvt_nhc',
+             'nvt_bdp', 'nvt_lan'
+            initial_temperature: Initial temperature of run. [K]
+            final_temperature: Final temperature of run. [K]
+            thermostat_coupling: Coupling strength to the thermostat.
         """
         super().__init__('ensemble')
-        if not (ensemble_method in ['nve', 'nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan', 'npt_ber', 'npt_scr',
-                                    'heat_nhc', 'heat_bdp', 'heat_lan']):
-            raise ValueError(f"{ensemble_method} is not an accepted ensemble method.")
-        self.ensemble_method = ensemble_method
-        self._set_args([self.ensemble_method])
-
-        self.ensemble = None
-        self.ensemble_type = self.ensemble_method.split('_')[0]
-        if self.ensemble_type == 'nvt':
-            self.ensemble = Ensemble.NVT()
-        elif self.ensemble_type == 'npt':
-            self.ensemble = Ensemble.NPT()
-        elif self.ensemble_type == 'heat':
-            self.ensemble = Ensemble.Heat()
+        if not (method in ['nvt_ber', 'nvt_nhc', 'nvt_bdp', 'nvt_lan']):
+            raise ValueError(f"{method} is not an accepted NVT ensemble method.")
+        self.method = method
+        self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+        self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
+        self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+        self._set_args([self.method, self.initial_temperature, self.final_temperature,
+                        self.thermostat_coupling])
 
     def __repr__(self):
-        out = f"{self.__class__.__name__}({self.ensemble_method}={self.ensemble.__repr__()})"
-        return out
+        return f"{self.__class__.__name__}(ensemble={self.method}, " \
+               f"initial_temperature={self.initial_temperature}, final_temperature={self.final_temperature}, " \
+               f"thermostat_coupling={self.thermostat_coupling})"
 
-    def set_nvt_parameters(self, initial_temperature: float, final_temperature: float,
-                           thermostat_coupling: float) -> None:
+
+class EnsembleHeat(Keyword):
+
+    def __init__(self, method: str, temperature: float, thermostat_coupling: float, temperature_delta: float,
+                 source_group_id: int, sink_group_id: int):
         """
-        Sets the parameters of an NVT ensemble
+        Sets the ensemble to use heaters.
+
+        https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
         Args:
-            initial_temperature: Initial temperature of run. [K]
-            final_temperature: Final temperature of run. [K]
-            thermostat_coupling: Coupling strength to the thermostat.
-        """
-        if not isinstance(self.ensemble, self.NVT):
-            raise Exception("Ensemble is not set for NVT.")
-        required_args = self.ensemble.set_parameters(initial_temperature, final_temperature, thermostat_coupling)
-        self.required_args.extend(required_args)
-
-    def set_npt_parameters(self, initial_temperature: float, final_temperature: float, thermostat_coupling: float,
-                           barostat_coupling: float, condition: str, pdict: Dict[str, float]) -> None:
-        """
-        Sets parameters of an NPT ensemble.
-
-        <condition> --> <required keys for pdict> \n
-        'isotropic' --> p_hydro C_hydro \n
-        'orthogonal' --> p_xx p_yy p_zz C_xx C_yy C_zz \n
-        'triclinic' --> p_xx p_yy p_zz p_xy p_xz p_yz C_xx C_yy C_zz
-                                                      C_xy C_xz C_yz \n
-
-        Args:
-            initial_temperature: Initial temperature of run. [K]
-            final_temperature: Final temperature of run. [K]
-            thermostat_coupling: Coupling strength to the thermostat.
-            barostat_coupling: Coupling strength to the thermostat.
-            condition: Either 'isotropic', 'orthogonal', or 'triclinic'.
-            pdict: Stores the elastic moduli [GPa] and barostat pressures
-             [GPa] required for the condition.
-        """
-        if not isinstance(self.ensemble, self.NPT):
-            raise Exception("Ensemble is not set for NPT.")
-        required_args = self.ensemble.set_parameters(initial_temperature, final_temperature, thermostat_coupling,
-                                                     barostat_coupling, condition, pdict)
-        self.required_args.extend(required_args)
-
-    @staticmethod
-    def get_npt_pdict(condition: str) -> Dict[str, None]:
-        """
-
-        <condition> --> <required keys for pdict> \n
-        'isotropic' --> p_hydro C_hydro \n
-        'orthogonal' --> p_xx p_yy p_zz C_xx C_yy C_zz \n
-        'triclinic' --> p_xx p_yy p_zz p_xy p_xz p_yz C_xx C_yy C_zz
-                                                      C_xy C_xz C_yz \n
-        Args:
-            condition: Either 'isotropic', 'orthogonal', or 'triclinic'.
-
-        Returns:
-            pdict to use with the set_npt_parameters function
-        """
-        params = Ensemble.NPT.get_pdict_params(condition)
-        pdict = dict()
-        for param in params:
-            pdict[param] = None
-        return pdict
-
-    def set_heat_parameters(self, temperature: float, thermostat_coupling: float, temperature_delta: float,
-                            source_group_id: int, sink_group_id: int) -> None:
-        """
-        Sets the parameters for a heating simulation.
-
-        Args:
+            method: Must be one of: 'heat_nhc', 'heat_bdp',
+             'heat_lan'
             temperature: Base temperature of the simulation. [K]
             thermostat_coupling: Coupling strength to the thermostat.
             temperature_delta: Temperature change from base temperature [K].
@@ -236,123 +194,273 @@ class Ensemble(Keyword):
             sink_group_id: The group ID (in grouping method 0) to sink
              heat. (Note: -temperature_delta)
         """
-        if not isinstance(self.ensemble, self.Heat):
-            raise Exception("Ensemble is not set for Heat.")
-        required_args = self.ensemble.set_parameters(temperature, thermostat_coupling, temperature_delta,
-                                                     source_group_id, sink_group_id)
-        self.required_args.extend(required_args)
+        super().__init__('ensemble')
+        if not (method in ['heat_nhc', 'heat_bdp', 'heat_lan']):
+            raise ValueError(f"{method} is not an accepted heating ensemble method.")
+        self.method = method
+        self.temperature = util.cond_assign(temperature, 0, op.gt, 'temperature')
+        self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+        if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
+            raise ValueError(f"The magnitude of temperature_delta must be smaller than the temperature.")
+        self.temperature_delta = util.assign_number(temperature_delta, 'temperature_delta')
+        self.source_group_id = util.cond_assign_int(source_group_id, 0, op.ge, 'source_group_id')
+        self.sink_group_id = util.cond_assign_int(sink_group_id, 0, op.ge, 'sink_group_id')
+        if self.source_group_id == self.sink_group_id:
+            raise ValueError(f"The source and sink group cannot be the same.")
+        self.parameters_set = True
+        self._set_args([self.method, self.temperature, self.thermostat_coupling, self.temperature_delta,
+                        self.source_group_id, self.sink_group_id])
 
-    class NVT:
+    def __repr__(self):
+        return f"{self.__class__.__name__}(ensemble={self.method}, temperature={self.temperature}, " \
+               f"thermostat_coupling={self.thermostat_coupling}, temperature_delta={self.temperature_delta}, " \
+               f"source_group_id={self.source_group_id}, sink_group_id={self.sink_group_id})"
 
-        def __init__(self):
-            self.initial_temperature = None
-            self.final_temperature = None
-            self.thermostat_coupling = None
-            self.parameters_set = False
 
-        def set_parameters(self, initial_temperature: float, final_temperature: float,
-                           thermostat_coupling: float) -> List[float]:
-            self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
-            self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
-            self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
-            self.parameters_set = True
-            return [self.initial_temperature, self.final_temperature, self.thermostat_coupling]
+class EnsembleNPT(Keyword):
+    default_elastic = 160/3  # GPa; Default elastic constant used in older GPUMD versions
 
-        def __repr__(self):
-            return f"{self.__class__.__name__}(initial_temperature={self.initial_temperature}, " \
-                   f"final_temperature={self.final_temperature}, thermostat_coupling={self.thermostat_coupling})"
+    def __init__(self, method: str, condition: str, initial_temperature: float, final_temperature: float,
+                 thermostat_coupling: float, barostat_coupling: float, p_hydro: float = None,
+                 c_hydro: float = None, p_xx: float = None, p_yy: float = None, p_zz: float = None, p_xy: float = None,
+                 p_xz: float = None, p_yz: float = None, c_xx: float = None, c_yy: float = None, c_zz: float = None,
+                 c_xy: float = None, c_xz: float = None, c_yz: float = None, voigt: bool = False):
+        """
+        Sets the ensemble to NPT. Use of the class methods isotropic(),
+        orthogonal(), and triclinic() recommended for instantiation.
 
-    class NPT:
+        Note the 'voigt' parameter which may need to be used depending
+        on the GPUMD version (True if >=v3.3.1, else False).
 
-        iso = ['p_hydro', 'C_hydro']
-        ortho = ['p_xx', 'p_yy', 'p_zz', 'C_xx', 'C_yy', 'C_zz']
-        tri = ['p_xx', 'p_yy', 'p_zz', 'p_xy', 'p_xz', 'p_yz', 'C_xx', 'C_yy', 'C_zz', 'C_xy', 'C_xz', 'C_yz']
+        https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
 
-        def __init__(self):
-            self.initial_temperature = None
-            self.final_temperature = None
-            self.thermostat_coupling = None
-            self.barostat_coupling = None
-            self.condition = None
-            self.pdict = None
-            self.parameters_set = False
+        Args:
+            method: Must be one of: 'npt_ber', 'npt_scr'
+            condition: One of 'isotropic', 'orthogonal', 'triclinic'.
+             Determines which pressures and elastic tensors are needed.
+            initial_temperature: Initial temperature of run. [K]
+            final_temperature: Final temperature of run. [K]
+            thermostat_coupling: Coupling strength to the thermostat.
+            barostat_coupling: Coupling strength to the thermostat.
+            p_hydro: For 'isotropic' condition. [GPa]
+            c_hydro: For 'isotropic' condition. [GPa]
+            p_xx: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_yy: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_zz: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_xy: Pressure component for 'triclinic' condition. [GPa]
+            p_xz: Pressure component for 'triclinic' condition. [GPa]
+            p_yz: Pressure component for 'triclinic' condition. [GPa]
+            c_xx: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_yy: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_zz: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_xy: Elastic constant component for 'triclinic' condition.
+             [GPa]
+            c_xz: Elastic constant component for 'triclinic' condition.
+             [GPa]
+            c_yz: Elastic constant component for 'triclinic' condition.
+             [GPa]
+            voigt: To use voigt notation or now for 'triclinic' condition.
+             See online documentation for details.
+        """
+        def check_for_input(param_name, param_value):
+            if param_value is None:
+                raise ValueError(f"The {param_name} parameter must be defined for the '{self.condition}' condition.")
 
-        @staticmethod
-        def get_pdict_params(condition: str):
-            if condition == 'isotropic':
-                params = Ensemble.NPT.iso
-            elif condition == 'orthogonal':
-                params = Ensemble.NPT.ortho
-            elif condition == 'triclinic':
-                params = Ensemble.NPT.tri
-            else:
-                raise ValueError(f"{condition} is not an accepted condition for the NPT ensemble.")
-            return params
+        super().__init__('ensemble')
+        if not (method in ['npt_ber', 'npt_scr']):
+            raise ValueError(f"{method} is not an accepted NPT ensemble method.")
+        self.method = method
 
-        def set_parameters(self, initial_temperature: float, final_temperature: float, thermostat_coupling: float,
-                           barostat_coupling: float, condition: str, pdict: Dict[str, float]) -> List[any]:
-            self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
-            self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
-            self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
-            self.barostat_coupling = util.cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
-
-            params = self.get_pdict_params(condition)
+        if condition in ['isotropic', 'orthogonal', 'triclinic']:
             self.condition = condition
-            pdict_valid = all([param in pdict.keys() for param in params])
-            if pdict_valid:
-                for key in params:
-                    pdict_valid &= isinstance(pdict[key], numbers.Number)
-                    if 'C_' in key:  # elastic moduli terms
-                        pdict_valid &= (pdict[key] > 0)
-                if not pdict_valid:
-                    raise ValueError(f"Pressures must be a number and elastic moduli must be positive numbers.")
+        else:
+            raise ValueError("The 'condition' parameter must be either 'isotropic', 'orthogonal', or 'triclinic'.")
 
-            else:
-                raise ValueError(f"The NPT parameters passed in the pdict are not sufficient.")
-            self.pdict = pdict
+        self.initial_temperature = util.cond_assign(initial_temperature, 0, op.gt, 'initial_temperature')
+        self.final_temperature = util.cond_assign(final_temperature, 0, op.gt, 'final_temperature')
+        self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
+        self.barostat_coupling = util.cond_assign(barostat_coupling, 1, op.ge, 'barostat_coupling')
+        self.voigt = util.assign_bool(voigt, 'voigt')
+        args = [self.method, self.initial_temperature, self.final_temperature, self.thermostat_coupling]
 
-            self.parameters_set = True
-            required_args = [self.initial_temperature, self.final_temperature, self.thermostat_coupling]
-            for key in params:  # use params to guarantee order
-                required_args.append(self.pdict[key])
-            required_args.append(self.barostat_coupling)
-            return required_args
+        if self.condition == 'isotropic':
+            for name, value in zip(['p_hydro, c_hydro'], [p_hydro, c_hydro]):
+                check_for_input(name, value)
+            self.p_hydro = util.assign_number(p_hydro, 'p_hydro')
+            self.c_hydro = util.cond_assign(c_hydro, 0, op.gt, 'c_hydro')
+            args.extend([self.p_hydro, self.c_hydro, self.barostat_coupling])
+            self._set_args(args)
 
-        def __repr__(self):
-            pdict_string = "..." if self.pdict else None
-            return f"{self.__class__.__name__}(initial_temperature={self.initial_temperature}, " \
-                   f"final_temperature={self.final_temperature}, thermostat_coupling={self.thermostat_coupling}, " \
-                   f"barostat_coupling={self.barostat_coupling}, condition={self.condition}, pdict={pdict_string})"
+        else:
+            for name, value in zip(['p_xx', 'p_yy', 'p_zz', 'c_xx', 'c_yy', 'c_zz'],
+                                   [p_xx, p_yy, p_zz, c_xx, c_yy, c_zz]):
+                check_for_input(name, value)
+            self.p_xx = util.assign_number(p_xx, 'p_xx')
+            self.p_yy = util.assign_number(p_yy, 'p_yy')
+            self.p_zz = util.assign_number(p_zz, 'p_zz')
+            self.c_xx = util.cond_assign(c_xx, 0, op.gt, 'c_xx')
+            self.c_yy = util.cond_assign(c_yy, 0, op.gt, 'c_yy')
+            self.c_zz = util.cond_assign(c_zz, 0, op.gt, 'c_zz')
 
-    class Heat:
+            if self.condition == 'orthogonal':
+                args.extend([self.p_xx, self.p_yy, self.p_zz, self.c_xx, self.c_yy, self.c_zz, self.barostat_coupling])
 
-        def __init__(self):
-            self.temperature = None
-            self.thermostat_coupling = None
-            self.temperature_delta = None
-            self.source_group_id = None
-            self.sink_group_id = None
-            self.parameters_set = False
+            elif self.condition == 'triclinic':
+                for name, value in zip(['p_xy', 'p_xz', 'p_yz', 'c_xy', 'c_xz', 'c_yz'],
+                                       [p_xy, p_xz, p_yz, c_xy, c_xz, c_yz]):
+                    check_for_input(name, value)
+                self.p_xy = util.assign_number(p_xy, 'p_xy')
+                self.p_xz = util.assign_number(p_xz, 'p_xz')
+                self.p_yz = util.assign_number(p_yz, 'p_yz')
+                self.c_xy = util.cond_assign(c_xy, 0, op.gt, 'c_xy')
+                self.c_xz = util.cond_assign(c_xz, 0, op.gt, 'c_xz')
+                self.c_yz = util.cond_assign(c_yz, 0, op.gt, 'c_yz')
 
-        def set_parameters(self, temperature: float, thermostat_coupling: float, temperature_delta: float,
-                           source_group_id: int, sink_group_id: int) -> List[any]:
-            self.temperature = util.cond_assign(temperature, 0, op.gt, 'temperature')
-            self.thermostat_coupling = util.cond_assign(thermostat_coupling, 1, op.ge, 'thermostat_coupling')
-            if (temperature_delta >= self.temperature) or (temperature_delta <= -self.temperature):
-                raise ValueError(f"The magnitude of temperature_delta must be smaller than the temperature.")
-            self.temperature_delta = util.assign_number(temperature_delta, 'temperature_delta')
-            self.source_group_id = util.cond_assign_int(source_group_id, 0, op.ge, 'source_group_id')
-            self.sink_group_id = util.cond_assign_int(sink_group_id, 0, op.ge, 'sink_group_id')
-            if self.source_group_id == self.sink_group_id:
-                raise ValueError(f"The source and sink group cannot be the same.")
-            self.parameters_set = True
-            return [self.temperature, self.thermostat_coupling, self.temperature_delta,
-                    self.source_group_id, self.sink_group_id]
+                if voigt:
+                    args.extend([self.p_xx, self.p_yy, self.p_zz, self.p_yz, self.p_xz, self.p_xy,
+                                 self.c_xx, self.c_yy, self.c_zz, self.c_yz, self.c_xz, self.c_xy,
+                                 self.barostat_coupling])
+                else:
+                    args.extend([self.p_xx, self.p_yy, self.p_zz, self.p_xy, self.p_xz, self.p_yz,
+                                 self.c_xx, self.c_yy, self.c_zz, self.c_xy, self.c_xz, self.c_yz,
+                                 self.barostat_coupling])
 
-        def __repr__(self):
-            return f"{self.__class__.__name__}(temperature={self.temperature}, " \
-                   f"thermostat_coupling={self.thermostat_coupling}, temperature_delta={self.temperature_delta}, " \
-                   f"source_group_id={self.source_group_id}, sink_group_id={self.sink_group_id})"
+            self._set_args(args)
+
+    def __repr__(self):
+        repr_str = f"{self.__class__.__name__}(condition={self.condition}, " \
+                   f"initial_temperature={self.initial_temperature}, final_temperature={self.final_temperature}, " \
+                   f"thermostat_coupling={self.thermostat_coupling}, "
+        if self.condition == 'isotropic':
+            return repr_str + f"\n            " \
+                              f"barostat_coupling={self.barostat_coupling}, p_hydro={self.p_hydro}, " \
+                              f"c_hydro={self.c_hydro})"
+        elif self.condition == 'orthogonal':
+            return repr_str + f"\n            " \
+                              f"barostat_coupling={self.barostat_coupling}, p_xx={self.p_xx}, p_yy={self.p_yy}, " \
+                              f"p_zz={self.p_zz}, c_xx={self.c_xx}, c_yy={self.c_yy}, c_zz={self.c_zz})"
+        elif self.condition == 'triclinic':
+            return repr_str + f"\n            " \
+                              f"barostat_coupling={self.barostat_coupling}, p_xx={self.p_xx}, p_yy={self.p_yy}, " \
+                              f"p_zz={self.p_zz}, p_xy={self.p_xy}, p_xz={self.p_xz}, p_yz={self.p_yz}, " \
+                              f"\n            " \
+                              f"c_xx={self.c_xx}, c_yy={self.c_yy}, c_zz={self.c_zz}, c_xz={self.c_xz}, " \
+                              f"c_xz={self.c_xz}, c_yz={self.c_yz}, voigt={self.voigt})"
+
+    @classmethod
+    def isotropic(cls, method: str, initial_temperature: float, final_temperature: float,
+                  thermostat_coupling: float, barostat_coupling: float, p_hydro: float, c_hydro: float):
+        """
+        Sets the ensemble to NPT with isotropic conditions.
+
+         https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
+
+        Args:
+            method: Must be one of: 'npt_ber', 'npt_scr'
+            initial_temperature: Initial temperature of run. [K]
+            final_temperature: Final temperature of run. [K]
+            thermostat_coupling: Coupling strength to the thermostat.
+            barostat_coupling: Coupling strength to the thermostat.
+            p_hydro: For 'isotropic' condition. [GPa]
+            c_hydro: For 'isotropic' condition. [GPa]
+
+        Returns:
+            EnsembleNPT Keyword
+        """
+        return cls(method=method, condition='isotropic', initial_temperature=initial_temperature,
+                   final_temperature=final_temperature, thermostat_coupling=thermostat_coupling,
+                   barostat_coupling=barostat_coupling, p_hydro=p_hydro, c_hydro=c_hydro)
+
+    @classmethod
+    def orthogonal(cls, method: str, initial_temperature: float, final_temperature: float,
+                   thermostat_coupling: float, barostat_coupling: float, p_xx: float, p_yy: float, p_zz: float,
+                   c_xx: float, c_yy: float, c_zz: float):
+        """
+        Sets the ensemble to NPT with conditions for an orthogonal box.
+
+        https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
+
+        Args:
+            method: Must be one of: 'npt_ber', 'npt_scr'
+            initial_temperature: Initial temperature of run. [K]
+            final_temperature: Final temperature of run. [K]
+            thermostat_coupling: Coupling strength to the thermostat.
+            barostat_coupling: Coupling strength to the thermostat.
+            p_xx: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_yy: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_zz: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            c_xx: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_yy: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_zz: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+
+        Returns:
+            EnsembleNPT Keyword
+        """
+        return cls(method=method, condition='orthogonal', initial_temperature=initial_temperature,
+                   final_temperature=final_temperature, thermostat_coupling=thermostat_coupling,
+                   barostat_coupling=barostat_coupling, p_xx=p_xx, p_yy=p_yy, p_zz=p_zz,
+                   c_xx=c_xx, c_yy=c_yy, c_zz=c_zz)
+
+    @classmethod
+    def triclinic(cls, method: str, initial_temperature: float, final_temperature: float,
+                  thermostat_coupling: float, barostat_coupling: float,
+                  p_xx: float, p_yy: float, p_zz: float, p_xy: float, p_xz: float, p_yz: float,
+                  c_xx: float, c_yy: float, c_zz: float, c_xy: float, c_xz: float, c_yz: float, voigt: bool = False):
+        """
+        Sets the ensemble to NPT with conditions for a triclinic box.
+
+        https://gpumd.zheyongfan.org/index.php/The_ensemble_keyword
+
+        Args:
+            method: Must be one of: 'npt_ber', 'npt_scr'
+            initial_temperature: Initial temperature of run. [K]
+            final_temperature: Final temperature of run. [K]
+            thermostat_coupling: Coupling strength to the thermostat.
+            barostat_coupling: Coupling strength to the thermostat.
+            p_xx: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_yy: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_zz: Pressure component for 'orthogonal' & 'triclinic'
+             condition. [GPa]
+            p_xy: Pressure component for 'triclinic' condition. [GPa]
+            p_xz: Pressure component for 'triclinic' condition. [GPa]
+            p_yz: Pressure component for 'triclinic' condition. [GPa]
+            c_xx: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_yy: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_zz: Elastic constant component for 'orthogonal' &
+             'triclinic' condition. [GPa]
+            c_xy: Elastic constant component for 'triclinic' condition.
+             [GPa]
+            c_xz: Elastic constant component for 'triclinic' condition.
+             [GPa]
+            c_yz: Elastic constant component for 'triclinic' condition.
+             [GPa]
+            voigt: To use voigt notation or now for 'triclinic' condition.
+             See online documentation for details.
+
+        Returns:
+            EnsembleNPT Keyword
+        """
+        return cls(method=method, condition='triclinic', initial_temperature=initial_temperature,
+                   final_temperature=final_temperature, thermostat_coupling=thermostat_coupling,
+                   barostat_coupling=barostat_coupling,
+                   p_xx=p_xx, p_yy=p_yy, p_zz=p_zz, p_xy=p_xy, p_xz=p_xz, p_yz=p_yz,
+                   c_xx=c_xx, c_yy=c_yy, c_zz=c_zz, c_xy=c_xy, c_xz=c_xz, c_yz=c_yz, voigt=voigt)
 
 
 class NeighborOff(Keyword):
@@ -1086,14 +1194,14 @@ class ChangeBox(Keyword):
         else:
             raise ValueError("The 'deformation' parameter must be either 'scale', 'stretch', or 'general'.")
 
-        if deformation == 'scale':
+        if self.deformation == 'scale':
             if delta is None:
                 raise ValueError("The 'delta' parameter must be defined for the 'scale' deformation.")
 
             self.delta = util.assign_number(delta, 'delta')
             self._set_args([self.delta])
 
-        elif deformation == 'stretch':
+        elif self.deformation == 'stretch':
             for name, value in zip(['delta_xx', 'delta_yy', 'delta_zz'], [delta_xx, delta_yy, delta_zz]):
                 if value is None:
                     raise ValueError(f"The {name} parameter must be defined for the 'stretch' deformation.")
@@ -1103,7 +1211,7 @@ class ChangeBox(Keyword):
             self.delta_zz = util.assign_number(delta_zz, 'delta_zz')
             self._set_args([self.delta_xx, self.delta_yy, self.delta_zz])
 
-        elif deformation == 'general':
+        elif self.deformation == 'general':
             for name, value in zip(['delta_xx', 'delta_yy', 'delta_zz', 'epsilon_yz', 'epsilon_xz', 'epsilon_xy'],
                                    [delta_xx, delta_yy, delta_zz, epsilon_yz, epsilon_xz, epsilon_xy]):
                 if value is None:
@@ -1141,7 +1249,7 @@ class ChangeBox(Keyword):
              of Angstrom.
 
         Returns:
-            ChangeBox keyword
+            ChangeBox Keyword
         """
         return cls(deformation='scale', delta=delta)
 
@@ -1162,7 +1270,7 @@ class ChangeBox(Keyword):
              Units of Angstrom.
 
         Returns:
-            ChangeBox keyword
+            ChangeBox Keyword
         """
         return cls(deformation='stretch', delta_xx=delta_xx, delta_yy=delta_yy, delta_zz=delta_zz)
 
@@ -1186,7 +1294,7 @@ class ChangeBox(Keyword):
             epsilon_xy: Dimensionless strain
 
         Returns:
-            ChangeBox keyword
+            ChangeBox Keyword
         """
         return cls(deformation='general', delta_xx=delta_xx, delta_yy=delta_yy, delta_zz=delta_zz,
                    epsilon_yz=epsilon_yz, epsilon_xz=epsilon_xz, epsilon_xy=epsilon_xy)

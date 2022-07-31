@@ -76,41 +76,24 @@ not provide the ``number_of_steps`` parameter, you will have to add the :class:`
 the :class:`~gpyumd.sim.Run` object.
 
 In the equilibration, we want to allow the structure to relax to the appropriate size for the temperature. To do this,
-we need to define an integrator suitable for the purpose using the ensemble_ keyword. In gpyumd, we define the
-:class:`~gpyumd.keyword.Ensemble` keyword through two steps. First, we instantiate :class:`~gpyumd.keyword.Ensemble`
-keyword object, defining one of the many types as outlined in the ensemble_ documentation. Next, we set the relevant
-parameters for the type of ensemble using either the :meth:`~gpyumd.keyword.Ensemble.set_nvt_parameters`,
-:meth:`~gpyumd.keyword.Ensemble.set_npt_parameters`, or :meth:`~gpyumd.keyword.Ensemble.set_heat_parameters` methods.
-(Note that NVE ensembles need no other parameters to be set.)
-
-
-In this example, we want constant atom number, pressure, and temperature, i.e., an NPT ensemble. To handle the extra
-complexity for NPT ensembles, gpyumd requires the user to know if their simulation box is orthogonal or triclinic.
-Then the user can ask gpyumd for the appropriate pressure and elastic moduli parameters needed, using the
-:meth:`gpyumd.keyword.Ensemble.get_npt_pdict` method, by specifying if the conditions are 'isotropic', 'orthogonal',
-or 'triclinic'. The processs for an 'orthogonal' box is shown for this example here:
+we need to define an integrator suitable for the purpose using the ensemble_ keyword. In gpyumd, we define the ensemble_
+keyword using the :class:`~gpyumd.keyword.EnsembleNVE`, :class:`~gpyumd.keyword.EnsembleNVT`,
+:class:`~gpyumd.keyword.EnsembleNPT`, and :class:`~gpyumd.keyword.EnsembleHeat` classes. In this example, we want
+constant atom number, pressure, and temperature, i.e., an NPT ensemble. To handle the extra
+complexity for NPT ensembles, we recommend using the class functions for the EnsembleNPT keyword. These class functions
+are :meth:`~gpyumd.keyword.EnsembleNPT.isotropic`, :meth:`~gpyumd.keyword.EnsembleNPT.orthogonal`, and
+:meth:`~gpyumd.keyword.EnsembleNPT.triclinic`. Below, we initialize the NPT ensemble using the
+:meth:`~gpyumd.keyword.EnsembleNPT.orthogonal` class method. The keywords_ for the simulation are then:
 ::
 
-    # Create ensemble for the equilibration
-    npt_ensemble = kwd.Ensemble(ensemble_method='npt_ber')  # step 1 for ensemble creation
-
-    # Determine the NPT conditions - special, extra definitions for NPT ensembles
-    npt_condition = 'orthogonal'
-    pdict = kwd.Ensemble.get_npt_pdict(condition=npt_condition)
-    pdict['p_xx'], pdict['p_yy'], pdict['p_zz'] = [0]*3  # GPa
-    pdict['C_xx'], pdict['C_yy'], pdict['C_zz'] = [53.4059]*3  # GPa
-
-    # step 2 for ensemble creation
-    npt_ensemble.set_npt_parameters(initial_temperature=300, final_temperature=300, thermostat_coupling=100,
-                                    barostat_coupling=2000, condition=npt_condition, pdict=pdict)
-
-With the NPT ensemble defined, we can define the remaining _keywords, which have much simpler definitions, with the
-following:
-::
-
+    pres = 0  # GPa
+    elast = 53.4059  # GPa
     keywords = [
         kwd.Velocity(initial_temperature=300),
-        npt_ensemble,
+        kwd.EnsembleNPT.orthogonal(method='npt_ber', initial_temperature=300,
+                           final_temperature=300, thermostat_coupling=100,
+                           barostat_coupling=2000, p_xx=pres, p_yy=pres, p_zz=pres,
+                           c_xx=elast, c_yy=elast, c_zz=elast),
         kwd.TimeStep(dt_in_fs=1),
         kwd.NeighborOff(),
         kwd.DumpThermo(1000)
@@ -127,8 +110,8 @@ If you are working in an interactive environment like Jupyter, you can take a qu
     Run: 'equilibration'
     # Equilibration
       Velocity(initial_temperature=300)
-      Ensemble(npt_ber=NPT(initial_temperature=300, final_temperature=300, thermostat_coupling=100,
-        barostat_coupling=2000, condition=orthogonal, pdict=...))
+      EnsembleNPT(condition=orthogonal, initial_temperature=300, final_temperature=300, thermostat_coupling=100,
+            barostat_coupling=2000, p_xx=0, p_yy=0, p_zz=0, c_xx=53.4059, c_yy=53.4059, c_zz=53.4059)
       TimeStep(dt_in_fs=1, max_distance_per_step=None)
       NeighborOff()
       DumpThermo(interval=1000)
@@ -144,7 +127,7 @@ autocorrelation. This can be done with the following:
 
     # Timestep is propagated from last run
     keywords = [
-        kwd.Ensemble(ensemble_method='nve'),
+        kwd.EnsembleNVE(),
         kwd.NeighborOff(),
         kwd.ComputeHAC(sample_interval=20, num_corr_steps=50000, output_interval=10),
         kwd.RunKeyword(number_of_steps=1e7)  # Can add run here instead of during add_run fucntion
@@ -179,8 +162,8 @@ simulation directory or if you want to use relative paths to the potential files
     potential Graphene_Lindsay_2010_modified.txt 0
 
     # Equilibration
-    time_step 1
     velocity 300
+    time_step 1
     ensemble npt_ber 300 300 100 0 0 0 53.4059 53.4059 53.4059 2000
     neighbor off
     dump_thermo 1000
